@@ -59,7 +59,7 @@ const del = (r) => {
       <h1 class="text-xl font-bold"><button class="mr-1" @click="router.back()">‹</button> 固定支出</h1>
       <button class="text-sm" style="color: var(--c-net)" @click="showAdd = !showAdd">+ 添加</button>
     </div>
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <div v-if="showAdd" class="card p-4 mb-4 space-y-3">
       <input v-model="f.name" placeholder="名称(如:爱奇艺/车险/房租)" class="w-full bg-transparent outline-none py-1" />

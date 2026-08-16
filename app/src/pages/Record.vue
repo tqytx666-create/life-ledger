@@ -147,7 +147,7 @@ async function submit() {
         :style="{ background: type === 'save' ? 'var(--c-save)' : 'var(--c-net)' }" @click="submit">
         {{ busy ? '正在入账…' : type === 'save' ? '记一笔省下的' : '记入账本' }}
       </button>
-      <p v-if="err" class="text-sm text-center mt-3" style="color: var(--c-out)">{{ err }}</p>
+      <p v-if="err" class="text-sm text-center mt-3" style="color: var(--danger)">{{ err }}</p>
       <p v-if="ok" class="text-sm text-center mt-3" style="color: var(--good-text)">{{ ok }}</p>
     </template>
   </div>

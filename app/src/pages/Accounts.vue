@@ -73,7 +73,7 @@ const archive = (a) => {
       <h1 class="text-xl font-bold"><button class="mr-1" @click="router.back()">‹</button> 账户管理</h1>
       <button class="text-sm" style="color: var(--c-net)" @click="showAdd = !showAdd">+ 新账户</button>
     </div>
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <div v-if="showAdd" class="card p-4 mb-4 space-y-3">
       <input v-model="nName" placeholder="账户名(如:招行卡/富途/余额宝)" class="w-full bg-transparent outline-none py-1" />

@@ -73,7 +73,7 @@ function monthlyInterest(l) {
       <h1 class="text-xl font-bold"><button class="mr-1" @click="router.back()">‹</button> 按揭贷款</h1>
       <button class="text-sm" style="color: var(--c-net)" @click="showAdd = !showAdd">+ 添加贷款</button>
     </div>
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <div v-if="showAdd" class="card p-4 mb-4 space-y-3">
       <input v-model="f.name" placeholder="名称(如:XX花园房贷)" class="w-full bg-transparent outline-none py-1" />
@@ -104,7 +104,7 @@ function monthlyInterest(l) {
     <div v-for="l in activeLoans" :key="l.id" class="card p-4 mb-3">
       <div class="flex items-center justify-between">
         <div class="font-medium">{{ l.name }}</div>
-        <div class="tabular font-semibold" style="color: var(--c-out)">剩 {{ fmtMoney(l.principal_remaining, l.currency) }}</div>
+        <div class="tabular font-semibold" style="color: var(--danger)">剩 {{ fmtMoney(l.principal_remaining, l.currency) }}</div>
       </div>
       <div class="text-xs mt-1.5 space-y-0.5" style="color: var(--ink-3)">
         <div>月供 {{ fmtMoney(l.monthly_payment, l.currency) }} · 每月{{ l.payment_day }}号从「{{ accName(l.pay_account_id) }}」自动扣</div>

@@ -40,7 +40,7 @@ const showTabs = computed(() => tabs.some((t) => t.path === route.path))
       <div class="text-center">
         <div class="text-3xl mb-3 animate-pulse">📒</div>
         <div class="text-sm" style="color: var(--ink-3)">正在打开账本…</div>
-        <div v-if="store.error" class="mt-4 text-sm px-6" style="color: var(--c-out)">
+        <div v-if="store.error" class="mt-4 text-sm px-6" style="color: var(--danger)">
           {{ store.error }}
           <button class="block mx-auto mt-3 underline" @click="loadAll()">重试</button>
         </div>

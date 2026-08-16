@@ -15,6 +15,16 @@ const scale = computed(() => {
   return (H - PAD.t - PAD.b) / (max * 1.08)
 })
 
+// 月均支出基准线(只算已完整结束的月份,当月进行中不拉低平均)
+const avgExpense = computed(() => {
+  const cur = new Date().toISOString().slice(0, 7)
+  const done = props.cashflow.filter((m) => m.month < cur && m.expense > 0)
+  const list = done.length ? done : props.cashflow
+  if (!list.length) return 0
+  return list.reduce((s, m) => s + m.expense, 0) / list.length
+})
+const avgY = computed(() => H - PAD.b - avgExpense.value * scale.value)
+
 const groups = computed(() => {
   const n = props.cashflow.length
   if (!n) return []
@@ -54,6 +64,11 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
     </div>
     <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full" :class="{ 'bars-on': on }">
       <line :x1="PAD.l" :x2="W - PAD.r" :y1="H - PAD.b" :y2="H - PAD.b" stroke="var(--baseline)" stroke-width="1" />
+      <!-- 月均支出基准线:目标是让每月绿柱降到线下越来越多 -->
+      <template v-if="avgExpense > 0 && avgY > PAD.t">
+        <line :x1="PAD.l" :x2="W - PAD.r" :y1="avgY" :y2="avgY" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="5 4" />
+        <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--ink-3)">月均支出 {{ fmtCNY(avgExpense, true) }}</text>
+      </template>
       <g v-for="(g, i) in groups" :key="g.m.month" @click="picked = picked === i ? -1 : i" class="cursor-pointer">
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />
         <path class="grow-bar" :style="{ transitionDelay: (i * 80) + 'ms' }" :d="barPath(g.in)" fill="var(--c-in)" />

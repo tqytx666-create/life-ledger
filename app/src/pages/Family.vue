@@ -92,7 +92,7 @@ const batchExpenses = (bid) => store.batchExpenses.filter((e) => e.batch_id === 
       <h1 class="text-xl font-bold">家人的钱</h1>
       <button class="text-sm" style="color: var(--c-net)" @click="showAddMember = !showAddMember">+ 添加成员</button>
     </div>
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <div v-if="showAddMember" class="card p-4 mb-4 space-y-2">
       <input v-model="mName" placeholder="称呼(如:媳妇/爸/妈)" class="w-full bg-transparent outline-none py-1" />
@@ -110,7 +110,7 @@ const batchExpenses = (bid) => store.batchExpenses.filter((e) => e.batch_id === 
           <span class="font-medium">{{ m.name }}</span>
           <span v-if="m.relation" class="text-xs ml-1.5" style="color: var(--ink-3)">{{ m.relation }}</span>
         </div>
-        <div class="text-sm tabular" :style="memberRemain(m.id) < 0 ? 'color: var(--c-out)' : 'color: var(--ink-2)'">
+        <div class="text-sm tabular" :style="memberRemain(m.id) < 0 ? 'color: var(--danger)' : 'color: var(--ink-2)'">
           在手约 {{ fmtMoney(memberRemain(m.id), 'CNY', true) }} <span style="color: var(--ink-3)">{{ open === m.id ? '▾' : '▸' }}</span>
         </div>
       </div>
@@ -138,7 +138,7 @@ const batchExpenses = (bid) => store.batchExpenses.filter((e) => e.batch_id === 
                 <div class="text-xs" style="color: var(--ink-3)">{{ fmtDate(b.given_at) }} 给了 {{ fmtMoney(b.amount, b.currency) }}</div>
               </div>
               <div class="text-right">
-                <div class="tabular font-medium" :style="batchRemain(b) < 0 ? 'color: var(--c-out)' : ''">
+                <div class="tabular font-medium" :style="batchRemain(b) < 0 ? 'color: var(--danger)' : ''">
                   剩 {{ fmtMoney(batchRemain(b), b.currency) }}</div>
                 <div class="text-xs" style="color: var(--ink-3)">已花 {{ fmtMoney(batchSpent(b.id), b.currency, true) }}</div>
               </div>

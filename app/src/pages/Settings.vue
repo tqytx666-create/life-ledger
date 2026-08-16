@@ -75,7 +75,7 @@ async function logout() {
 <template>
   <div class="max-w-md mx-auto px-4 pt-6">
     <h1 class="text-xl font-bold mb-4">我的</h1>
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <div class="card mb-4 divide-y" style="--tw-divide-opacity:1">
       <button class="w-full flex items-center justify-between p-4" @click="router.push('/accounts')">
@@ -119,10 +119,10 @@ async function logout() {
         <button :disabled="busy" class="px-4 rounded-lg text-white text-sm disabled:opacity-50"
           style="background: var(--c-net)" @click="changePass">改密码</button>
       </div>
-      <p v-if="passMsg" class="text-xs mt-2" :style="{ color: passMsg.includes('✓') ? 'var(--good-text)' : 'var(--c-out)' }">{{ passMsg }}</p>
+      <p v-if="passMsg" class="text-xs mt-2" :style="{ color: passMsg.includes('✓') ? 'var(--good-text)' : 'var(--danger)' }">{{ passMsg }}</p>
     </div>
 
-    <button class="w-full py-3 rounded-xl text-sm border" style="border-color: var(--hairline); color: var(--c-out)" @click="logout">退出账本</button>
+    <button class="w-full py-3 rounded-xl text-sm border" style="border-color: var(--hairline); color: var(--danger)" @click="logout">退出账本</button>
     <p class="text-center text-xs mt-6 mb-2" style="color: var(--ink-3)">人生账本 v1.0</p>
   </div>
 </template>

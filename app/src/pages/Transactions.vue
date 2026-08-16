@@ -35,7 +35,7 @@ function sign(t) {
 function color(t) {
   const s = sign(t)
   if (t.type.startsWith('transfer')) return 'var(--ink-2)'
-  return s === '+' ? 'var(--good-text)' : 'var(--ink-1)'
+  return s === '+' ? 'var(--c-in)' : 'var(--ink-1)'
 }
 function typeName(t) {
   return { income: '', expense: '', transfer_out: '转出', transfer_in: '转入', adjust: '校准' }[t.type] || ''
@@ -88,7 +88,7 @@ async function delSave(s) {
         @click="filter = f[0]">{{ f[1] }}</button>
     </div>
 
-    <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
+    <p v-if="err" class="text-sm mb-3" style="color: var(--danger)">{{ err }}</p>
 
     <!-- 省钱记录视图 -->
     <template v-if="filter === 'save'">

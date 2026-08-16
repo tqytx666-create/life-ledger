@@ -39,6 +39,20 @@ export function netWorthCNY() {
   return t
 }
 
+// 可动净资产:剔除房/车及其绑定贷款,只看每月能操作的盘子
+export function liquidNetWorthCNY() {
+  let t = 0
+  for (const a of store.accounts) {
+    if (a.archived || a.type === 'property' || a.type === 'vehicle') continue
+    t += (a.type === 'loan' ? -1 : 1) * toCNY(a.balance, a.currency)
+  }
+  for (const l of store.loans) {
+    if (l.archived || l.asset_backed) continue
+    t -= toCNY(l.principal_remaining, l.currency)
+  }
+  return t
+}
+
 export function batchSpent(batchId) {
   return store.batchExpenses
     .filter((e) => e.batch_id === batchId)

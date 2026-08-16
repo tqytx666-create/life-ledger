@@ -45,7 +45,7 @@ async function login() {
           style="background: var(--c-net)">
           {{ busy ? '正在进入…' : '进入账本' }}
         </button>
-        <p v-if="err" class="text-sm text-center" style="color: var(--c-out)">{{ err }}</p>
+        <p v-if="err" class="text-sm text-center" style="color: var(--danger)">{{ err }}</p>
       </form>
     </div>
   </div>
