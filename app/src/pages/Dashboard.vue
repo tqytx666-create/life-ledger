@@ -28,6 +28,19 @@ const totalDebt = computed(() => {
 
 const typeLabel = Object.fromEntries(ACCOUNT_TYPES.map((t) => [t.key, t]))
 const activeAccounts = computed(() => store.accounts.filter((a) => !a.archived))
+
+// 省钱账:本月/上月总额 + 本月按方式细分
+const thisMonth = new Date().toISOString().slice(0, 7)
+const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7)
+const savedThisMonth = computed(() => store.savings.filter((s) => s.saved_at.startsWith(thisMonth)).reduce((t, s) => t + Number(s.amount), 0))
+const savedLastMonth = computed(() => store.savings.filter((s) => s.saved_at.startsWith(lastMonth)).reduce((t, s) => t + Number(s.amount), 0))
+const savedByWay = computed(() => {
+  const m = {}
+  for (const s of store.savings.filter((x) => x.saved_at.startsWith(thisMonth))) {
+    m[s.way] = (m[s.way] || 0) + Number(s.amount)
+  }
+  return Object.entries(m).sort((a, b) => b[1] - a[1])
+})
 </script>
 
 <template>
@@ -50,6 +63,22 @@ const activeAccounts = computed(() => store.accounts.filter((a) => !a.archived))
     <div class="card p-4 mb-4">
       <div class="text-sm font-medium mb-2" style="color: var(--ink-2)">月度收支</div>
       <CashflowChart :cashflow="store.cashflow" />
+    </div>
+
+    <!-- 省钱账 -->
+    <div v-if="savedThisMonth > 0 || savedLastMonth > 0" class="card p-4 mb-4">
+      <div class="flex items-baseline justify-between mb-1">
+        <div class="text-sm font-medium" style="color: var(--ink-2)">本月省下</div>
+        <div v-if="savedLastMonth > 0" class="text-xs" style="color: var(--ink-3)">上月 {{ fmtCNY(savedLastMonth, true) }}</div>
+      </div>
+      <div class="text-3xl font-semibold mb-2" style="color: var(--c-save)">
+        <span style="color: var(--ink-1)">{{ fmtCNY(savedThisMonth) }}</span>
+      </div>
+      <div v-for="[way, amt] in savedByWay" :key="way" class="flex items-center justify-between py-1 text-sm">
+        <span class="flex items-center gap-2" style="color: var(--ink-2)">
+          <i class="w-2 h-2 rounded-full inline-block" style="background: var(--c-save)"></i>{{ way }}</span>
+        <span class="tabular">{{ fmtCNY(amt) }}</span>
+      </div>
     </div>
 
     <!-- 账户列表 -->

@@ -18,6 +18,7 @@ export const store = reactive({
   snapshots: [],      // 净资产走势
   recentTx: [],       // 最近流水(展示)
   cashflow: [],       // [{month, income, expense}] 折CNY
+  savings: [],        // 省钱记录
 })
 
 export function toCNY(amount, currency) {
@@ -55,7 +56,7 @@ export async function loadAll() {
   store.error = ''
   try {
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
-    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx] = await Promise.all([
+    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings] = await Promise.all([
       q(supabase.from('accounts').select('*').order('sort').order('created_at'), '账户'),
       q(supabase.from('members').select('*').order('sort').order('created_at'), '成员'),
       q(supabase.from('batches').select('*').order('given_at', { ascending: false }), '批次'),
@@ -65,6 +66,7 @@ export async function loadAll() {
       q(supabase.from('fx_rates').select('*'), '汇率'),
       q(supabase.from('net_worth_snapshots').select('*').gte('snap_date', sixMonthsAgo).order('snap_date'), '快照'),
       q(supabase.from('transactions').select('*').gte('occurred_at', sixMonthsAgo).order('occurred_at', { ascending: false }).order('created_at', { ascending: false }).limit(1000), '流水'),
+      q(supabase.from('savings').select('*').gte('saved_at', sixMonthsAgo).order('saved_at', { ascending: false }).limit(1000), '省钱'),
     ])
     store.accounts = accounts
     store.members = members
@@ -75,6 +77,7 @@ export async function loadAll() {
     for (const r of fx) store.fx[r.currency] = Number(r.to_cny)
     store.snapshots = snaps
     store.recentTx = tx
+    store.savings = savings
     rebuildCashflow()
     store.ready = true
   } catch (e) {

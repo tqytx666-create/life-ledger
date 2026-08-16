@@ -12,6 +12,7 @@
   --c-net: #2a78d6;   /* 净资产 · 蓝 */
   --c-in: #1baf7a;    /* 收入 · 绿 */
   --c-out: #e34948;   /* 支出 · 红 */
+  --c-save: #4a3aa7;  /* 省下 · 紫 */
   --good-text: #006300;
 }
 @media (prefers-color-scheme: dark) {
@@ -27,6 +28,7 @@
     --c-net: #3987e5;
     --c-in: #199e70;
     --c-out: #e66767;
+    --c-save: #9085e9;
     --good-text: #0ca30c;
   }
 }

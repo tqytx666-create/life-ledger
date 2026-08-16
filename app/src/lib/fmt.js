@@ -10,6 +10,7 @@ export const ACCOUNT_TYPES = [
 
 export const EXPENSE_CATS = ['餐饮', '买菜', '日用', '交通', '购物', '娱乐', '医疗', '教育', '人情', '给家人', '房贷月供', '提前还款', '房租', '保险', '订阅', '其他']
 export const INCOME_CATS = ['工资', '奖金', '投资收益', '报销', '红包', '利息', '其他']
+export const SAVE_WAYS = ['忍住没买', '找到替代', '优惠券', '满减折扣', '比价省的', '其他']
 
 export function fmtMoney(n, currency = 'CNY', compact = false) {
   const v = Number(n) || 0

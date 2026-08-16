@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { store, deleteTx } from '../lib/store'
-import { fmtMoney, fmtDate } from '../lib/fmt'
+import { supabase } from '../lib/supabase'
+import { store, deleteTx, loadAll } from '../lib/store'
+import { fmtMoney, fmtCNY, fmtDate } from '../lib/fmt'
 
 const filter = ref('all')
 const busyId = ref('')
@@ -53,6 +54,27 @@ async function del(t) {
     busyId.value = ''
   }
 }
+
+// 省钱记录:按日分组 + 删除(不涉及余额)
+const saveGroups = computed(() => {
+  const g = {}
+  for (const s of store.savings) (g[s.saved_at] ||= []).push(s)
+  return Object.entries(g).sort((a, b) => b[0].localeCompare(a[0]))
+})
+async function delSave(s) {
+  if (!confirm(`删掉这笔省钱记录?\n${s.way} ${fmtCNY(s.amount)}`)) return
+  busyId.value = s.id
+  err.value = ''
+  try {
+    const { error } = await supabase.from('savings').delete().eq('id', s.id)
+    if (error) throw new Error(error.message)
+    await loadAll()
+  } catch (e) {
+    err.value = e.message
+  } finally {
+    busyId.value = ''
+  }
+}
 </script>
 
 <template>
@@ -60,7 +82,7 @@ async function del(t) {
     <h1 class="text-xl font-bold mb-4">流水</h1>
 
     <div class="flex gap-2 mb-4">
-      <button v-for="f in [['all', '全部'], ['expense', '支出'], ['income', '收入'], ['transfer', '转账']]" :key="f[0]"
+      <button v-for="f in [['all', '全部'], ['expense', '支出'], ['income', '收入'], ['transfer', '转账'], ['save', '省下']]" :key="f[0]"
         class="px-3.5 py-1.5 rounded-full text-[13px] border"
         :style="filter === f[0] ? 'background: var(--c-net); color:#fff; border-color:transparent' : 'border-color: var(--hairline); color: var(--ink-2)'"
         @click="filter = f[0]">{{ f[1] }}</button>
@@ -68,11 +90,35 @@ async function del(t) {
 
     <p v-if="err" class="text-sm mb-3" style="color: var(--c-out)">{{ err }}</p>
 
-    <div v-if="!groups.length" class="card p-8 text-center text-sm" style="color: var(--ink-3)">
+    <!-- 省钱记录视图 -->
+    <template v-if="filter === 'save'">
+      <div v-if="!saveGroups.length" class="card p-8 text-center text-sm" style="color: var(--ink-3)">
+        还没记过省下的钱<br />忍住没买、用了优惠券,都值得记一笔
+      </div>
+      <div v-for="[date, list] in saveGroups" :key="date" class="mb-4">
+        <div class="text-xs mb-1.5 px-1" style="color: var(--ink-3)">{{ fmtDate(date) }}</div>
+        <div class="card px-4">
+          <div v-for="s in list" :key="s.id"
+            class="flex items-center justify-between py-3 border-b last:border-0" style="border-color: var(--hairline)">
+            <div class="min-w-0 flex-1">
+              <div class="text-[15px] truncate">{{ s.way }}</div>
+              <div v-if="s.note" class="text-xs truncate" style="color: var(--ink-3)">{{ s.note }}</div>
+            </div>
+            <div class="flex items-center gap-3 pl-2">
+              <span class="tabular font-medium" style="color: var(--c-save)">省{{ fmtCNY(s.amount) }}</span>
+              <button class="text-xs px-1.5 py-1 disabled:opacity-40" style="color: var(--ink-3)"
+                :disabled="busyId === s.id" @click="delSave(s)">{{ busyId === s.id ? '…' : '✕' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div v-else-if="!groups.length" class="card p-8 text-center text-sm" style="color: var(--ink-3)">
       近半年还没有这类流水
     </div>
 
-    <div v-for="[date, list] in groups" :key="date" class="mb-4">
+    <div v-if="filter !== 'save'" v-for="[date, list] in groups" :key="date" class="mb-4">
       <div class="text-xs mb-1.5 px-1" style="color: var(--ink-3)">{{ fmtDate(date) }}</div>
       <div class="card px-4">
         <div v-for="t in list" :key="t.id"
