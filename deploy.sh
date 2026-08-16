@@ -11,7 +11,13 @@ echo "== push main(带重试) =="
 git add -A && git commit -m "${1:-chore: deploy}" --allow-empty -q || true
 for i in 1 2 3 4 5; do git push origin main && break || { echo retry...; sleep 8; }; done
 
-echo "== 推 gh-pages =="
+echo "== 推 gh-pages(保留历史chunk,防旧缓存黑屏) =="
+REMOTE=$(git remote get-url origin)
+TMPOLD=$(mktemp -d)
+if git clone -q --depth 1 --branch gh-pages "$REMOTE" "$TMPOLD" 2>/dev/null; then
+  rsync -a --ignore-existing "$TMPOLD/assets/" app/dist/assets/ 2>/dev/null || true
+fi
+rm -rf "$TMPOLD"
 cd app/dist
 git init -q && git checkout -q -b gh-pages
 git add -A && git commit -qm deploy
