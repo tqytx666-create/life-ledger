@@ -83,6 +83,18 @@ const toggleClose = (b) => run(async () => {
   if (error) throw error
 })
 
+const removeMember = (m) => {
+  const n = memberBatches(m.id).length
+  const msg = n ? `删除「${m.name}」?名下 ${n} 个批次和花销记录会一起删除` : `删除「${m.name}」?`
+  if (!confirm(msg)) return
+  run(async () => {
+    let r = await supabase.from('batches').delete().eq('member_id', m.id)
+    if (r.error) throw r.error
+    r = await supabase.from('members').delete().eq('id', m.id)
+    if (r.error) throw r.error
+  })
+}
+
 const batchExpenses = (bid) => store.batchExpenses.filter((e) => e.batch_id === bid)
 </script>
 
@@ -117,7 +129,10 @@ const batchExpenses = (bid) => store.batchExpenses.filter((e) => e.batch_id === 
 
       <template v-if="open === m.id">
         <div class="mt-3 pt-3 border-t" style="border-color: var(--hairline)">
-          <button class="text-sm mb-2" style="color: var(--c-net)" @click="showAddBatch = showAddBatch === m.id ? '' : m.id">+ 给一笔钱(开批次)</button>
+          <div class="flex items-center justify-between mb-2">
+            <button class="text-sm" style="color: var(--c-net)" @click="showAddBatch = showAddBatch === m.id ? '' : m.id">+ 给一笔钱(开批次)</button>
+            <button class="text-xs" style="color: var(--danger)" @click="removeMember(m)">删除成员</button>
+          </div>
           <div v-if="showAddBatch === m.id" class="rounded-xl p-3 mb-3 space-y-2" style="background: var(--plane)">
             <input v-model="bAmount" type="number" inputmode="decimal" placeholder="金额" class="w-full bg-transparent outline-none py-1 tabular" />
             <div class="flex gap-2">

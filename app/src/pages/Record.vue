@@ -6,7 +6,7 @@ import { store, recordTx, loadAll } from '../lib/store'
 import { EXPENSE_CATS, INCOME_CATS, SAVE_WAYS, todayStr, fmtMoney } from '../lib/fmt'
 
 const router = useRouter()
-const type = ref('expense')
+const type = ref(new URLSearchParams(location.hash.split('?')[1] || '').get('t') === 'save' ? 'save' : 'expense')
 const amount = ref('')
 const category = ref('')
 const note = ref('')

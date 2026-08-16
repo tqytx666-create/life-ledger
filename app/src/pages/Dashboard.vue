@@ -199,10 +199,10 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         <div class="tabular font-bold mt-1 text-[17px]" :style="mNet >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
           {{ mNet >= 0 ? '+' : '' }}{{ fmtCNY(netMAnim, true) }}</div>
       </div>
-      <div class="card p-3">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-save)"></i>本月省下</div>
+      <button class="card p-3 text-left" style="border-color: var(--c-save)" @click="router.push('/save')">
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-save)"></i>本月省下 · 作战室 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]" style="color: var(--c-save)">{{ fmtCNY(savedAnim, true) }}</div>
-      </div>
+      </button>
     </div>
 
     <!-- 高息歼灭战 -->
@@ -240,7 +240,10 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
 
     <!-- 本月去向 -->
     <div v-if="catBars.length" class="card p-4 mb-4 rise" style="--d:4">
-      <div class="text-sm font-medium mb-3" style="color: var(--ink-2)">本月花在哪</div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-medium" style="color: var(--ink-2)">本月花在哪</div>
+        <button class="text-sm" style="color: var(--c-save)" @click="router.push('/save')">省钱作战 ›</button>
+      </div>
       <div class="space-y-2.5">
         <div v-for="(b, i) in catBars" :key="b.cat">
           <div class="flex justify-between text-[13px] mb-1">
