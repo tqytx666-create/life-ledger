@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from './lib/supabase'
 import { store, loadAll, bootSettle } from './lib/store'
 import Login from './pages/Login.vue'
+import Icon from './components/Icon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,11 +25,11 @@ async function init() {
 }
 
 const tabs = [
-  { path: '/', label: '总览', icon: '📊' },
-  { path: '/tx', label: '流水', icon: '📜' },
-  { path: '/record', label: '记账', icon: '✍️', big: true },
-  { path: '/family', label: '家人', icon: '👨‍👩‍👧' },
-  { path: '/me', label: '我的', icon: '⚙️' },
+  { path: '/', label: '总览', icon: 'grid' },
+  { path: '/tx', label: '流水', icon: 'list' },
+  { path: '/record', label: '记账', icon: 'plus', big: true },
+  { path: '/family', label: '家人', icon: 'users' },
+  { path: '/me', label: '我的', icon: 'sliders' },
 ]
 const showTabs = computed(() => tabs.some((t) => t.path === route.path))
 </script>
@@ -57,8 +58,9 @@ const showTabs = computed(() => tabs.some((t) => t.path === route.path))
         <div class="flex items-stretch max-w-md mx-auto">
           <button v-for="t in tabs" :key="t.path" class="flex-1 py-2 flex flex-col items-center gap-0.5"
             :class="{ 'tab-on': route.path === t.path }" @click="router.push(t.path)">
-            <span class="tab-ic" :class="t.big ? 'text-2xl -mt-3 rounded-full w-11 h-11 flex items-center justify-center shadow' : 'text-lg'"
-              :style="t.big ? 'background: var(--c-net); color:#fff' : ''">{{ t.icon }}</span>
+            <span class="tab-ic" :class="t.big ? '-mt-3 rounded-full w-11 h-11 flex items-center justify-center shadow' : 'py-0.5'"
+              :style="t.big ? 'background: var(--c-net)' : (route.path === t.path ? 'color: var(--c-net)' : 'color: var(--ink-3)')">
+              <Icon :name="t.icon" :size="t.big ? 22 : 20" /></span>
             <span class="text-[11px]" :style="{ color: route.path === t.path ? 'var(--c-net)' : 'var(--ink-3)', fontWeight: route.path === t.path ? 600 : 400 }">
               {{ t.label }}</span>
           </button>

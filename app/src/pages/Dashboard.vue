@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { store, netWorthCNY, liquidNetWorthCNY, toCNY } from '../lib/store'
 import { fmtCNY, fmtMoney, ACCOUNT_TYPES } from '../lib/fmt'
 import { useCountUp } from '../lib/anim'
+import Icon from '../components/Icon.vue'
 import NetWorthChart from '../components/NetWorthChart.vue'
 import CashflowChart from '../components/CashflowChart.vue'
 
@@ -27,6 +28,11 @@ const liquidDebts = computed(() => {
   return t
 })
 const liquidAnim = useCountUp(liquid)
+const PARTICLES = [
+  { l: 8, d: 6.5, y: 0 }, { l: 18, d: 8, y: 2.1 }, { l: 30, d: 7, y: 4.2 },
+  { l: 44, d: 9, y: 1.2 }, { l: 55, d: 6, y: 3.4 }, { l: 66, d: 8.5, y: 0.6 },
+  { l: 76, d: 7.2, y: 2.8 }, { l: 87, d: 6.8, y: 4.6 }, { l: 94, d: 8.8, y: 1.8 },
+]
 
 // ===== 仓位两卡:现金钱包 / 股票 =====
 const cashWallet = computed(() => {
@@ -113,10 +119,10 @@ onMounted(() => setTimeout(() => { barsOn.value = true }, 350))
 
 // ===== 资产分组(不含房车) =====
 const GROUPS = [
-  { key: 'liquid', name: '现金与银行卡', icon: '🏦', match: (a) => (a.type === 'cash' || a.type === 'bank') && Number(a.balance) >= 0 },
-  { key: 'invest', name: '理财与基金', icon: '🧺', match: (a) => a.type === 'fund' },
-  { key: 'stock', name: '证券', icon: '📈', match: (a) => a.type === 'stock' },
-  { key: 'credit', name: '信用与欠款', icon: '💳', match: (a) => a.type === 'bank' && Number(a.balance) < 0 },
+  { key: 'liquid', name: '现金与银行卡', icon: 'bank', match: (a) => (a.type === 'cash' || a.type === 'bank') && Number(a.balance) >= 0 },
+  { key: 'invest', name: '理财与基金', icon: 'coins', match: (a) => a.type === 'fund' },
+  { key: 'stock', name: '证券', icon: 'trend', match: (a) => a.type === 'stock' },
+  { key: 'credit', name: '信用与欠款', icon: 'card', match: (a) => a.type === 'bank' && Number(a.balance) < 0 },
 ]
 const grouped = computed(() => {
   const act = store.accounts.filter((a) => !a.archived && !isSunkAcc(a))
@@ -183,9 +189,11 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <!-- 英雄:可动净资产 -->
     <div class="hero-card p-5 mb-4 rise" style="--d:0">
       <div class="text-[13px] opacity-80">可动净资产 · 不含房车 · 目标:转正↗</div>
-      <div class="text-[40px] leading-tight font-bold tracking-tight tabular">
+      <div class="text-[40px] leading-tight font-bold tracking-tight tabular gold-text">
         {{ fmtCNY(liquidAnim) }}
       </div>
+      <i v-for="p in PARTICLES" :key="p.l" class="pt"
+        :style="{ left: p.l + '%', animationDuration: p.d + 's', animationDelay: p.y + 's' }"></i>
       <div class="mt-3">
         <div class="flex justify-between text-xs opacity-85 mb-1.5">
           <span>可动资产 {{ fmtCNY(liquidAssets, true) }}</span>
@@ -205,12 +213,12 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <!-- 仓位两卡:现金钱包 / 股票行情 -->
     <div class="grid grid-cols-2 gap-2.5 mb-2.5 rise" style="--d:1">
       <button class="card p-3.5 text-left" @click="router.push('/wallet')">
-        <div class="text-[11px]" style="color: var(--ink-3)">💰 现金钱包 ›</div>
+        <div class="text-[11px] flex items-center gap-1" style="color: var(--gold)"><Icon name="wallet" :size="14" /> 现金钱包 ›</div>
         <div class="tabular font-bold mt-1 text-[19px]">{{ fmtCNY(cashAnim, true) }}</div>
         <div class="text-[10px] mt-0.5" style="color: var(--ink-3)">卡+零钱+理财可用</div>
       </button>
       <button class="card p-3.5 text-left" @click="router.push('/stocks')">
-        <div class="text-[11px]" style="color: var(--ink-3)">📈 股票 ›</div>
+        <div class="text-[11px] flex items-center gap-1" style="color: var(--gold)"><Icon name="trend" :size="14" /> 股票 ›</div>
         <div class="tabular font-bold mt-1 text-[19px]">{{ fmtCNY(stockAnim, true) }}</div>
         <div v-if="sec" class="text-[11px] mt-0.5 tabular font-medium"
           :style="Number(sec.day_pnl) >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
@@ -237,7 +245,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
           {{ mNet >= 0 ? '+' : '' }}{{ fmtCNY(netMAnim, true) }}</div>
       </div>
       <button class="card p-3 text-left" style="border-color: var(--c-save)" @click="router.push('/save')">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-save)"></i>本月省下 · 作战室 ›</div>
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--c-save)"><Icon name="spark" :size="13" />本月省下 · 作战室 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]" style="color: var(--c-save)">{{ fmtCNY(savedAnim, true) }}</div>
       </button>
     </div>
@@ -245,7 +253,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <!-- 高息歼灭战 -->
     <div class="card p-4 mb-4 rise" style="--d:2">
       <div class="flex items-center justify-between mb-1">
-        <div class="text-sm font-medium" style="color: var(--ink-2)">🎯 高息歼灭战 · 网商贷12%</div>
+        <div class="text-sm font-medium flex items-center gap-1.5" style="color: var(--ink-2)"><Icon name="flame" :size="15" /> 高息歼灭战 · 网商贷12%</div>
         <div class="text-xs" style="color: var(--ink-3)">已消灭 {{ (wsd.progress * 100).toFixed(1) }}%</div>
       </div>
       <div class="flex items-baseline gap-2 mb-2">
@@ -261,7 +269,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
 
     <!-- 未来7天 -->
     <div v-if="upcoming.length" class="card p-4 mb-4 rise" style="--d:3">
-      <div class="text-sm font-medium mb-2.5" style="color: var(--ink-2)">⏰ 接下来 7 天</div>
+      <div class="text-sm font-medium mb-2.5 flex items-center gap-1.5" style="color: var(--ink-2)"><Icon name="clock" :size="15" /> 接下来 7 天</div>
       <div class="space-y-2">
         <div v-for="(e, i) in upcoming" :key="i" class="flex items-center justify-between text-sm">
           <span class="flex items-center gap-2">
@@ -315,7 +323,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
       </div>
       <div v-for="g in grouped" :key="g.key" class="border-b last:border-0" style="border-color: var(--hairline)">
         <button class="w-full flex items-center justify-between py-3" @click="openGroup = openGroup === g.key ? '' : g.key">
-          <span class="flex items-center gap-2 text-[15px]">{{ g.icon }} {{ g.name }}
+          <span class="flex items-center gap-2 text-[15px]"><Icon :name="g.icon" :size="16" style="color: var(--gold)" /> {{ g.name }}
             <span class="text-xs" style="color: var(--ink-3)">{{ g.list.length }}个</span></span>
           <span class="flex items-center gap-1.5 tabular font-medium" :style="g.total < 0 ? 'color: var(--danger)' : ''">
             {{ fmtCNY(g.total, true) }}<span class="text-xs" style="color: var(--ink-3)">{{ openGroup === g.key ? '▾' : '▸' }}</span></span>
@@ -350,7 +358,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <!-- 沉淀资产(房车,不计入) -->
     <div v-if="sunk.assets.length" class="card p-4 mb-4 rise" style="--d:9; opacity: .92">
       <button class="w-full flex items-center justify-between" @click="sunkOpen = !sunkOpen">
-        <span class="text-sm font-medium" style="color: var(--ink-3)">🧊 沉淀资产 · 房车(不计入上方)</span>
+        <span class="text-sm font-medium flex items-center gap-1.5" style="color: var(--ink-3)"><Icon name="snow" :size="15" /> 沉淀资产 · 房车(不计入上方)</span>
         <span class="tabular text-sm" style="color: var(--ink-3)">净值约 {{ fmtCNY(sunk.net, true) }} {{ sunkOpen ? '▾' : '▸' }}</span>
       </button>
       <div v-if="sunkOpen" class="mt-3 pt-3 border-t space-y-1.5 text-sm" style="border-color: var(--hairline)">
