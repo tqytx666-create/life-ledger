@@ -133,3 +133,7 @@ html, body {
 input, select, textarea { font-size: 16px; }
 select { background: transparent; color: var(--ink-1); }
 select option { background: var(--surface-1); color: var(--ink-1); }
+
+/* 刷新钮旋转 */
+.spin-once { animation: spinOnce .6s ease-in-out; }
+@keyframes spinOnce { to { transform: rotate(360deg); } }

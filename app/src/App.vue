@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from './lib/supabase'
 import { store, loadAll, bootSettle } from './lib/store'
@@ -32,6 +32,11 @@ const tabs = [
   { path: '/me', label: '我的', icon: 'sliders' },
 ]
 const showTabs = computed(() => tabs.some((t) => t.path === route.path))
+const spinning = ref(false)
+function hardRefresh() {
+  spinning.value = true
+  setTimeout(() => window.location.reload(), 350)
+}
 </script>
 
 <template>
@@ -53,6 +58,11 @@ const showTabs = computed(() => tabs.some((t) => t.path === route.path))
           <component :is="Component" class="pb-safe" />
         </transition>
       </router-view>
+      <button class="fixed right-4 z-50 w-9 h-9 rounded-full flex items-center justify-center"
+        style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem); background: rgba(22,21,26,.85); border: 1px solid var(--hairline); color: var(--gold); backdrop-filter: blur(8px)"
+        aria-label="刷新" @click="hardRefresh">
+        <Icon name="refresh" :size="17" :class="{ 'spin-once': spinning }" />
+      </button>
       <nav v-if="showTabs" class="fixed bottom-0 inset-x-0 z-50 tabbar-safe border-t"
         style="background: var(--surface-1); border-color: var(--hairline)">
         <div class="flex items-stretch max-w-md mx-auto">
