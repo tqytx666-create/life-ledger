@@ -18,8 +18,23 @@ const busy = ref(false)
 const err = ref('')
 const ok = ref('')
 
-const accounts = computed(() => store.accounts.filter((a) => !a.archived && a.type !== 'loan'))
-if (accounts.value.length && !accountId.value) accountId.value = accounts.value[0].id
+// 账户排序:浦发第一,兴业第二,其余按近半年使用次数
+const PIN = ['浦发银行卡(6197)', '兴业银行卡(1268)']
+const accounts = computed(() => {
+  const list = store.accounts.filter((a) => !a.archived && a.type !== 'loan' && a.type !== 'property' && a.type !== 'vehicle')
+  const useCount = {}
+  for (const t of store.recentTx) useCount[t.account_id] = (useCount[t.account_id] || 0) + 1
+  return list.slice().sort((a, b) => {
+    const pa = PIN.indexOf(a.name), pb = PIN.indexOf(b.name)
+    if (pa !== -1 || pb !== -1) return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb)
+    return (useCount[b.id] || 0) - (useCount[a.id] || 0)
+  })
+})
+// 默认选中:上次用过的,否则排第一的
+const lastAcc = localStorage.getItem('ll_last_acc')
+if (accounts.value.length && !accountId.value) {
+  accountId.value = accounts.value.some((a) => a.id === lastAcc) ? lastAcc : accounts.value[0].id
+}
 
 const cats = computed(() => (type.value === 'save' ? SAVE_WAYS : type.value === 'income' ? INCOME_CATS : EXPENSE_CATS))
 const account = computed(() => accounts.value.find((a) => a.id === accountId.value))
@@ -62,6 +77,7 @@ async function submit() {
       p_recurring_id: null,
     })
     ok.value = '记好了 ✓'
+    localStorage.setItem('ll_last_acc', accountId.value)
     amount.value = ''; note.value = ''; batchId.value = ''
     setTimeout(() => { ok.value = '' }, 1500)
   } catch (e) {
@@ -74,7 +90,10 @@ async function submit() {
 
 <template>
   <div class="max-w-md mx-auto px-4 pt-6">
-    <h1 class="text-xl font-bold mb-4">记一笔</h1>
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold">记一笔</h1>
+      <button class="text-sm" style="color: var(--c-net)" @click="router.push('/inbox')">📥 随手拍 ›</button>
+    </div>
 
     <!-- 类型 -->
     <div class="flex gap-2 mb-4">

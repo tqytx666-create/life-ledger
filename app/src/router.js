@@ -9,6 +9,7 @@ import Accounts from './pages/Accounts.vue'
 import Loans from './pages/Loans.vue'
 import Recurring from './pages/Recurring.vue'
 import SaveBattle from './pages/SaveBattle.vue'
+import Inbox from './pages/Inbox.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -22,5 +23,6 @@ export const router = createRouter({
     { path: '/loans', component: Loans },
     { path: '/recurring', component: Recurring },
     { path: '/save', component: SaveBattle },
+    { path: '/inbox', component: Inbox },
   ],
 })

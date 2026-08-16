@@ -87,6 +87,9 @@ async function logout() {
       <button class="w-full flex items-center justify-between p-4 border-t" style="border-color: var(--hairline)" @click="router.push('/recurring')">
         <span>🔁 固定支出</span><span style="color: var(--ink-3)">›</span>
       </button>
+      <button class="w-full flex items-center justify-between p-4 border-t" style="border-color: var(--hairline)" @click="router.push('/inbox')">
+        <span>📥 随手拍收件箱</span><span style="color: var(--ink-3)">›</span>
+      </button>
     </div>
 
     <div class="card p-4 mb-4">
