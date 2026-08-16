@@ -1,0 +1,5 @@
+credentials.env
+node_modules/
+dist/
+db-snapshots/
+.DS_Store
