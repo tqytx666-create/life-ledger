@@ -1,12 +1,14 @@
 <script setup>
 // 月度收支 · 双系列分组柱(收入绿/支出红,图例常驻,点按看数)
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { fmtCNY } from '../lib/fmt'
 
 const props = defineProps({ cashflow: { type: Array, default: () => [] } })
 
 const W = 340, H = 170, PAD = { l: 8, r: 8, t: 26, b: 22 }
 const picked = ref(-1)
+const on = ref(false)
+onMounted(() => setTimeout(() => { on.value = true }, 250))
 
 const scale = computed(() => {
   const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense]))
@@ -50,12 +52,12 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
     <div v-if="!groups.length" class="h-[150px] flex items-center justify-center text-sm" style="color: var(--ink-3)">
       本月开始记账,下月就能看对比
     </div>
-    <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full">
+    <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full" :class="{ 'bars-on': on }">
       <line :x1="PAD.l" :x2="W - PAD.r" :y1="H - PAD.b" :y2="H - PAD.b" stroke="var(--baseline)" stroke-width="1" />
       <g v-for="(g, i) in groups" :key="g.m.month" @click="picked = picked === i ? -1 : i" class="cursor-pointer">
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />
-        <path :d="barPath(g.in)" fill="var(--c-in)" />
-        <path :d="barPath(g.out)" fill="var(--c-out)" />
+        <path class="grow-bar" :style="{ transitionDelay: (i * 80) + 'ms' }" :d="barPath(g.in)" fill="var(--c-in)" />
+        <path class="grow-bar" :style="{ transitionDelay: (i * 80 + 40) + 'ms' }" :d="barPath(g.out)" fill="var(--c-out)" />
         <text :x="g.cx" :y="H - 8" font-size="10" text-anchor="middle" fill="var(--ink-3)">{{ g.label }}</text>
         <!-- 末月直接标注(浅色绿柱对比不足的补救) -->
         <template v-if="i === groups.length - 1 && picked < 0">

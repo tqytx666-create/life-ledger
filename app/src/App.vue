@@ -47,13 +47,17 @@ const showTabs = computed(() => tabs.some((t) => t.path === route.path))
       </div>
     </div>
     <template v-else>
-      <router-view class="pb-safe" />
+      <router-view v-slot="{ Component }">
+        <transition name="page">
+          <component :is="Component" class="pb-safe" />
+        </transition>
+      </router-view>
       <nav v-if="showTabs" class="fixed bottom-0 inset-x-0 z-50 tabbar-safe border-t"
         style="background: var(--surface-1); border-color: var(--hairline)">
         <div class="flex items-stretch max-w-md mx-auto">
           <button v-for="t in tabs" :key="t.path" class="flex-1 py-2 flex flex-col items-center gap-0.5"
-            @click="router.push(t.path)">
-            <span :class="t.big ? 'text-2xl -mt-3 rounded-full w-11 h-11 flex items-center justify-center shadow' : 'text-lg'"
+            :class="{ 'tab-on': route.path === t.path }" @click="router.push(t.path)">
+            <span class="tab-ic" :class="t.big ? 'text-2xl -mt-3 rounded-full w-11 h-11 flex items-center justify-center shadow' : 'text-lg'"
               :style="t.big ? 'background: var(--c-net); color:#fff' : ''">{{ t.icon }}</span>
             <span class="text-[11px]" :style="{ color: route.path === t.path ? 'var(--c-net)' : 'var(--ink-3)', fontWeight: route.path === t.path ? 600 : 400 }">
               {{ t.label }}</span>

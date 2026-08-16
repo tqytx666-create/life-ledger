@@ -1,12 +1,14 @@
 <script setup>
 // 净资产走势 · 单系列面积线图(单系列不设图例,标题即说明)
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { fmtCNY, fmtDate } from '../lib/fmt'
 
 const props = defineProps({ snapshots: { type: Array, default: () => [] } })
 
 const W = 340, H = 150, PAD = { l: 8, r: 52, t: 14, b: 22 }
 const hover = ref(-1)
+const drawOn = ref(false)
+onMounted(() => setTimeout(() => { drawOn.value = true }, 200))
 
 const pts = computed(() => {
   const s = props.snapshots
@@ -50,12 +52,12 @@ function onMove(e) {
     <div v-if="!pts.length" class="h-[150px] flex items-center justify-center text-sm" style="color: var(--ink-3)">
       记上账,走势就长出来了
     </div>
-    <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full touch-none"
+    <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full touch-none" :class="{ 'draw-on': drawOn }"
       @mousemove="onMove" @mouseleave="hover = -1" @touchstart.passive="onMove" @touchmove.passive="onMove" @touchend="hover = -1">
       <line v-for="y in gridYs" :key="y" :x1="PAD.l" :x2="W - PAD.r" :y1="y" :y2="y" stroke="var(--grid)" stroke-width="1" />
       <line :x1="PAD.l" :x2="W - PAD.r" :y1="H - PAD.b" :y2="H - PAD.b" stroke="var(--baseline)" stroke-width="1" />
-      <path :d="areaPath" fill="var(--c-net)" opacity="0.1" />
-      <path :d="linePath" fill="none" stroke="var(--c-net)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path class="fade-area" :d="areaPath" fill="var(--c-net)" />
+      <path class="draw-line" :d="linePath" pathLength="1" fill="none" stroke="var(--c-net)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
       <!-- 端点:≥8px 标记 + 2px surface 环 + 直接标注 -->
       <circle :cx="last.x" :cy="last.y" r="6" fill="var(--surface-1)" />
       <circle :cx="last.x" :cy="last.y" r="4" fill="var(--c-net)" />
