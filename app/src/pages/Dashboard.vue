@@ -28,6 +28,24 @@ const liquidDebts = computed(() => {
 })
 const liquidAnim = useCountUp(liquid)
 
+// ===== 仓位两卡:现金钱包 / 股票 =====
+const cashWallet = computed(() => {
+  let t = 0
+  for (const a of store.accounts) {
+    if (a.archived || Number(a.balance) <= 0) continue
+    if (a.type === 'cash' || a.type === 'bank' || a.type === 'fund') t += toCNY(a.balance, a.currency)
+  }
+  return t
+})
+const stockTotal = computed(() => {
+  let t = 0
+  for (const a of store.accounts) if (!a.archived && a.type === 'stock') t += toCNY(a.balance, a.currency)
+  return t
+})
+const sec = computed(() => store.secDaily)
+const cashAnim = useCountUp(cashWallet)
+const stockAnim = useCountUp(stockTotal)
+
 // ===== 本月四格:收入/支出/净结余/省下 =====
 function monthSum(type, month) {
   const acc = Object.fromEntries(store.accounts.map((a) => [a.id, a]))
@@ -180,6 +198,25 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         <div class="flex justify-between text-[11px] opacity-70 mt-1">
           <span>白条铺满 = 资产追平欠债</span>
           <span>含房车全口径 {{ fmtCNY(fullNet, true) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仓位两卡:现金钱包 / 股票行情 -->
+    <div class="grid grid-cols-2 gap-2.5 mb-2.5 rise" style="--d:1">
+      <div class="card p-3.5">
+        <div class="text-[11px]" style="color: var(--ink-3)">💰 现金钱包</div>
+        <div class="tabular font-bold mt-1 text-[19px]">{{ fmtCNY(cashAnim, true) }}</div>
+        <div class="text-[10px] mt-0.5" style="color: var(--ink-3)">卡+零钱+理财可用</div>
+      </div>
+      <div class="card p-3.5">
+        <div class="text-[11px]" style="color: var(--ink-3)">📈 股票</div>
+        <div class="tabular font-bold mt-1 text-[19px]">{{ fmtCNY(stockAnim, true) }}</div>
+        <div v-if="sec" class="text-[11px] mt-0.5 tabular font-medium"
+          :style="Number(sec.day_pnl) >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
+          {{ Number(sec.day_pnl) >= 0 ? '+' : '' }}{{ fmtCNY(Number(sec.day_pnl), true) }}
+          ({{ Number(sec.day_pct) >= 0 ? '+' : '' }}{{ Number(sec.day_pct).toFixed(2) }}%)
+          <span style="color: var(--ink-3); font-weight: 400">{{ String(sec.snap_date).slice(5).replace('-', '/') }}收盘</span>
         </div>
       </div>
     </div>
