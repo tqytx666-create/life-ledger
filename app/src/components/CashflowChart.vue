@@ -3,7 +3,10 @@
 import { computed, ref, onMounted } from 'vue'
 import { fmtCNY } from '../lib/fmt'
 
-const props = defineProps({ cashflow: { type: Array, default: () => [] } })
+const props = defineProps({
+  cashflow: { type: Array, default: () => [] },
+  baseline: { type: Number, default: 0 },      // 全口径月支出基准(固定盘+生活预算),不传则用历史均值
+})
 
 const W = 340, H = 170, PAD = { l: 8, r: 8, t: 26, b: 22 }
 const picked = ref(-1)
@@ -11,12 +14,13 @@ const on = ref(false)
 onMounted(() => setTimeout(() => { on.value = true }, 250))
 
 const scale = computed(() => {
-  const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense]))
+  const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense]), props.baseline)
   return (H - PAD.t - PAD.b) / (max * 1.08)
 })
 
-// 月均支出基准线(只算已完整结束的月份,当月进行中不拉低平均)
+// 基准线:优先用传入的全口径基准,否则退回历史均值
 const avgExpense = computed(() => {
+  if (props.baseline > 0) return props.baseline
   const cur = new Date().toISOString().slice(0, 7)
   const done = props.cashflow.filter((m) => m.month < cur && m.expense > 0)
   const list = done.length ? done : props.cashflow
@@ -67,7 +71,7 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
       <!-- 月均支出基准线:目标是让每月绿柱降到线下越来越多 -->
       <template v-if="avgExpense > 0 && avgY > PAD.t">
         <line :x1="PAD.l" :x2="W - PAD.r" :y1="avgY" :y2="avgY" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="5 4" />
-        <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--ink-3)">月均支出 {{ fmtCNY(avgExpense, true) }}</text>
+        <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--ink-3)">月支出基准 {{ fmtCNY(avgExpense, true) }}</text>
       </template>
       <g v-for="(g, i) in groups" :key="g.m.month" @click="picked = picked === i ? -1 : i" class="cursor-pointer">
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />

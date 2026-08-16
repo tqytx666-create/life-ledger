@@ -136,6 +136,26 @@ const sunkOpen = ref(false)
 const liquidSnapshots = computed(() =>
   store.snapshots.map((s) => ({ ...s, total_cny: s.liquid_cny ?? s.total_cny })))
 
+// 全口径月支出基准 = 固定支出(房租/给家人等) + 全部月供 + 生活消费预算
+// 固定盘实时取自配置:退订/还清贷款,基准线自动下降
+const VARIABLE_BUDGET = 30000  // 生活消费预算(吃喝购物娱乐订阅),要调跟我说
+const baseline = computed(() => {
+  let fixed = 0
+  const accById = Object.fromEntries(store.accounts.map((a) => [a.id, a]))
+  for (const r of store.recurring) {
+    if (!r.active || r.period !== 'monthly' || r.flow === 'income') continue
+    if (!r.peer_account_id) { fixed += Number(r.amount); continue }
+    // 转给欠款账户 = 还外部的债(如理想车贷),也是付出去的钱;转自己正余额卡不算
+    const peer = accById[r.peer_account_id]
+    if (peer && Number(peer.balance) < 0) fixed += Number(r.amount)
+  }
+  for (const l of store.loans) {
+    if (!l.archived && Number(l.principal_remaining) > 0) fixed += toCNY(l.monthly_payment, l.currency)
+  }
+  return fixed + VARIABLE_BUDGET
+})
+const baselineFixed = computed(() => baseline.value - VARIABLE_BUDGET)
+
 const kindStyle = { income: 'color: var(--c-in)', loan: 'color: var(--c-out)', expense: 'color: var(--c-out)', transfer: 'color: var(--ink-2)' }
 const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
 </script>
@@ -240,8 +260,11 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
 
     <!-- 月度收支 -->
     <div class="card p-4 mb-4 rise" style="--d:6">
-      <div class="text-sm font-medium mb-2" style="color: var(--ink-2)">月度收支</div>
-      <CashflowChart :cashflow="store.cashflow" />
+      <div class="text-sm font-medium mb-0.5" style="color: var(--ink-2)">月度收支</div>
+      <div class="text-[11px] mb-2" style="color: var(--ink-3)">
+        基准线 = 固定盘 {{ fmtCNY(baselineFixed, true) }}(房租+给家人+全部月供) + 生活预算 3万;目标:绿柱压到线下
+      </div>
+      <CashflowChart :cashflow="store.cashflow" :baseline="baseline" />
     </div>
 
     <!-- 资产分组 -->
