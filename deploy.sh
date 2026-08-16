@@ -26,7 +26,7 @@ for i in 1 2 3 4 5; do git push -f "$REMOTE" gh-pages && break || { echo retry..
 cd .. && rm -rf dist/.git
 
 echo "== 轮询线上 chunk =="
-LOCAL=$(ls dist/assets/index-*.js | head -1 | xargs basename)
+LOCAL=$(grep -oE "index-[A-Za-z0-9_-]+\.js" dist/index.html | head -1)
 URL=$(git -C .. remote get-url origin | sed -E 's#https://([^@]+@)?github.com/([^/]+)/([^.]+)(\.git)?#https://\2.github.io/\3/#')
 echo "线上地址: $URL"
 for i in $(seq 1 40); do
