@@ -3,6 +3,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../lib/store'
+import Icon from '../components/Icon.vue'
 import { fmtCNY } from '../lib/fmt'
 
 const router = useRouter()
@@ -44,6 +45,9 @@ const totalPnl = computed(() => {
     <h1 class="text-xl font-bold mb-4 rise" style="--d:0"><button class="mr-1" @click="router.back()">‹</button> 📈 股票持仓</h1>
 
     <div class="hero-card p-5 mb-4 rise" style="--d:0">
+      <div class="hero-inner"></div>
+      <div class="hero-sheen"></div>
+      <span class="hero-mark"><Icon name="spark" :size="110" /></span>
       <div class="text-[13px] opacity-80">证券总值(两户合计,含现金与融资)</div>
       <div class="text-[36px] leading-tight font-bold tracking-tight tabular">{{ fmtCNY(total) }}</div>
       <div class="flex gap-4 mt-1.5 text-[13px]">

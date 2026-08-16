@@ -188,7 +188,13 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
   <div class="max-w-md mx-auto px-4 pt-5" :class="{ 'bars-on': barsOn }">
     <!-- 英雄:可动净资产 -->
     <div class="hero-card p-5 mb-4 rise" style="--d:0">
-      <div class="text-[13px] opacity-80">可动净资产 · 不含房车 · 目标:转正↗</div>
+      <div class="hero-inner"></div>
+      <div class="hero-sheen"></div>
+      <span class="hero-mark"><Icon name="spark" :size="120" /></span>
+      <div class="flex items-start justify-between">
+        <div class="text-[13px] opacity-80">可动净资产 · 不含房车 · 目标:转正↗</div>
+        <div class="hero-brand pt-0.5">LIFE LEDGER</div>
+      </div>
       <div class="text-[40px] leading-tight font-bold tracking-tight tabular gold-text">
         {{ fmtCNY(liquidAnim) }}
       </div>

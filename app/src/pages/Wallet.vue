@@ -3,6 +3,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { store, toCNY } from '../lib/store'
+import Icon from '../components/Icon.vue'
 import { fmtCNY, fmtMoney } from '../lib/fmt'
 
 const router = useRouter()
@@ -30,6 +31,9 @@ const maxBal = computed(() => Math.max(1, ...grouped.value.flatMap((g) => g.list
     <h1 class="text-xl font-bold mb-4 rise" style="--d:0"><button class="mr-1" @click="router.back()">‹</button> 💰 现金钱包</h1>
 
     <div class="hero-card p-5 mb-4 rise" style="--d:0">
+      <div class="hero-inner"></div>
+      <div class="hero-sheen"></div>
+      <span class="hero-mark"><Icon name="spark" :size="110" /></span>
       <div class="text-[13px] opacity-80">随时能动用的钱</div>
       <div class="text-[36px] leading-tight font-bold tracking-tight tabular">{{ fmtCNY(total) }}</div>
     </div>
