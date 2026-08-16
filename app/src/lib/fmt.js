@@ -6,6 +6,8 @@ export const ACCOUNT_TYPES = [
   { key: 'bank', label: '银行卡', icon: '🏦' },
   { key: 'stock', label: '股票', icon: '📈' },
   { key: 'fund', label: '基金', icon: '🧺' },
+  { key: 'property', label: '房产', icon: '🏠' },
+  { key: 'vehicle', label: '车辆', icon: '🚗' },
 ]
 
 export const EXPENSE_CATS = ['餐饮', '买菜', '日用', '交通', '购物', '娱乐', '医疗', '教育', '人情', '给家人', '房贷月供', '提前还款', '房租', '保险', '订阅', '其他']
