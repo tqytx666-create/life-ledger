@@ -9,6 +9,24 @@ const router = useRouter()
 const err = ref('')
 const busy = ref(false)
 const fxEdit = ref({ ...store.fx })
+const newPass = ref('')
+const passMsg = ref('')
+
+async function changePass() {
+  passMsg.value = ''
+  if ((newPass.value || '').length < 6) { passMsg.value = '至少 6 位'; return }
+  busy.value = true
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPass.value })
+    if (error) throw error
+    passMsg.value = '改好了 ✓ 下次登录用新密码'
+    newPass.value = ''
+  } catch (e) {
+    passMsg.value = e.message.includes('different from the old') ? '新密码不能和旧的一样' : e.message
+  } finally {
+    busy.value = false
+  }
+}
 
 async function saveFx() {
   err.value = ''; busy.value = true
@@ -90,6 +108,18 @@ async function logout() {
       <p class="text-xs mb-3" style="color: var(--ink-3)">导出全部数据为 Excel,自己留底</p>
       <button :disabled="busy" class="px-4 py-2 rounded-lg text-sm border disabled:opacity-50" style="border-color: var(--c-net); color: var(--c-net)" @click="exportExcel">
         {{ busy ? '正在导出…' : '📥 导出 Excel' }}</button>
+    </div>
+
+    <div class="card p-4 mb-4">
+      <div class="text-sm font-medium mb-1" style="color: var(--ink-2)">修改密码</div>
+      <p class="text-xs mb-3" style="color: var(--ink-3)">改成只有你自己知道的,至少 6 位</p>
+      <div class="flex gap-2">
+        <input v-model="newPass" type="password" placeholder="新密码" autocomplete="new-password"
+          class="flex-1 card px-3 py-2 outline-none text-sm" />
+        <button :disabled="busy" class="px-4 rounded-lg text-white text-sm disabled:opacity-50"
+          style="background: var(--c-net)" @click="changePass">改密码</button>
+      </div>
+      <p v-if="passMsg" class="text-xs mt-2" :style="{ color: passMsg.includes('✓') ? 'var(--good-text)' : 'var(--c-out)' }">{{ passMsg }}</p>
     </div>
 
     <button class="w-full py-3 rounded-xl text-sm border" style="border-color: var(--hairline); color: var(--c-out)" @click="logout">退出账本</button>
