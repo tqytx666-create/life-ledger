@@ -48,7 +48,7 @@ const showTabs = computed(() => tabs.some((t) => t.path === route.path))
     </div>
     <template v-else>
       <router-view class="pb-safe" />
-      <nav v-if="showTabs" class="fixed bottom-0 inset-x-0 tabbar-safe border-t"
+      <nav v-if="showTabs" class="fixed bottom-0 inset-x-0 z-50 tabbar-safe border-t"
         style="background: var(--surface-1); border-color: var(--hairline)">
         <div class="flex items-stretch max-w-md mx-auto">
           <button v-for="t in tabs" :key="t.path" class="flex-1 py-2 flex flex-col items-center gap-0.5"
