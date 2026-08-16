@@ -68,11 +68,6 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
     </div>
     <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full" :class="{ 'bars-on': on }">
       <line :x1="PAD.l" :x2="W - PAD.r" :y1="H - PAD.b" :y2="H - PAD.b" stroke="var(--baseline)" stroke-width="1" />
-      <!-- 月均支出基准线:目标是让每月绿柱降到线下越来越多 -->
-      <template v-if="avgExpense > 0 && avgY > PAD.t">
-        <line :x1="PAD.l" :x2="W - PAD.r" :y1="avgY" :y2="avgY" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="5 4" />
-        <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--ink-3)">月支出基准 {{ fmtCNY(avgExpense, true) }}</text>
-      </template>
       <g v-for="(g, i) in groups" :key="g.m.month" @click="picked = picked === i ? -1 : i" class="cursor-pointer">
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />
         <path class="grow-bar" :style="{ transitionDelay: (i * 80) + 'ms' }" :d="barPath(g.in)" fill="var(--c-in)" />
@@ -84,6 +79,11 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
           <text v-if="g.m.expense > 0" :x="g.out.x + g.out.w / 2" :y="g.out.y - 4" font-size="9" text-anchor="middle" fill="var(--ink-2)">{{ fmtCNY(g.m.expense, true) }}</text>
         </template>
       </g>
+      <!-- 月均支出基准线(画在柱子上层) -->
+      <template v-if="avgExpense > 0 && avgY > PAD.t">
+        <line :x1="PAD.l" :x2="W - PAD.r" :y1="avgY" :y2="avgY" stroke="var(--gold)" stroke-width="1" stroke-dasharray="5 4" opacity="0.85" />
+        <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--gold)">月支出基准 {{ fmtCNY(avgExpense, true) }}</text>
+      </template>
       <g v-if="pickedG" :transform="`translate(${Math.min(Math.max(pickedG.cx - 62, 2), W - 126)}, 0)`">
         <rect width="124" height="24" rx="6" fill="var(--surface-1)" stroke="var(--hairline)" />
         <text x="62" y="16" font-size="10" text-anchor="middle" fill="var(--ink-1)">

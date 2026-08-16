@@ -99,7 +99,7 @@ const upcoming = computed(() => {
 })
 
 // ===== 本月去向 =====
-const CAT_COLORS = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834']
+const CAT_COLORS = ['#d8b25c', '#9aa7c7', '#c98d76', '#8fb5a0', '#a89bf0', '#c7788a', '#8d9d6f', '#b8b3a6']  // 黑金同族哑光系
 const catBars = computed(() => {
   const acc = Object.fromEntries(store.accounts.map((a) => [a.id, a]))
   const m = {}
@@ -199,8 +199,8 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
           <span>可动资产 {{ fmtCNY(liquidAssets, true) }}</span>
           <span>要还的债 {{ fmtCNY(liquidDebts, true) }}</span>
         </div>
-        <div class="h-2 rounded-full overflow-hidden" style="background: rgba(255,255,255,.25)">
-          <div class="h-full rounded-full cat-bar" style="background: rgba(255,255,255,.9)"
+        <div class="h-2 rounded-full overflow-hidden" style="background: rgba(255,255,255,.10)">
+          <div class="h-full rounded-full cat-bar" style="background: linear-gradient(90deg, #8a6f35 0%, #d8b25c 55%, #f2dda2 100%); box-shadow: 0 0 10px rgba(216,178,92,.45)"
             :style="{ transform: barsOn ? `scaleX(${Math.min(Math.max(liquidAssets / Math.max(liquidDebts, 1), 0.02), 1)})` : 'scaleX(0)' }"></div>
         </div>
         <div class="flex justify-between text-[11px] opacity-70 mt-1">
@@ -239,12 +239,12 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-out)"></i>本月支出</div>
         <div class="tabular font-semibold mt-1 text-[17px]">{{ fmtCNY(expenseAnim, true) }}</div>
       </div>
-      <div class="card p-3" style="border-color: var(--c-net)">
+      <div class="card p-3" style="border-color: rgba(216,178,92,.32)">
         <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-net)"></i>本月净结余 · 要越来越大</div>
         <div class="tabular font-bold mt-1 text-[17px]" :style="mNet >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
           {{ mNet >= 0 ? '+' : '' }}{{ fmtCNY(netMAnim, true) }}</div>
       </div>
-      <button class="card p-3 text-left" style="border-color: var(--c-save)" @click="router.push('/save')">
+      <button class="card p-3 text-left" style="border-color: rgba(168,155,240,.30)" @click="router.push('/save')">
         <div class="text-[11px] flex items-center gap-1.5" style="color: var(--c-save)"><Icon name="spark" :size="13" />本月省下 · 作战室 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]" style="color: var(--c-save)">{{ fmtCNY(savedAnim, true) }}</div>
       </button>
