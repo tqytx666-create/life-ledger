@@ -257,7 +257,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     </div>
 
     <!-- 高息歼灭战 -->
-    <div class="card p-4 mb-4 rise" style="--d:2">
+    <div v-if="wsd.owed > 0" class="card p-4 mb-4 rise" style="--d:2">
       <div class="flex items-center justify-between mb-1">
         <div class="text-sm font-medium flex items-center gap-1.5" style="color: var(--ink-2)"><Icon name="flame" :size="15" /> 高息歼灭战 · 网商贷12%</div>
         <div class="text-xs" style="color: var(--ink-3)">已消灭 {{ (wsd.progress * 100).toFixed(1) }}%</div>
