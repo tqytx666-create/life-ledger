@@ -72,21 +72,22 @@ export async function loadAll() {
   store.loading = true
   store.error = ''
   try {
+    const uid = store.session?.user?.id
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
     const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings] = await Promise.all([
-      q(supabase.from('accounts').select('*').order('sort').order('created_at'), '账户'),
-      q(supabase.from('members').select('*').order('sort').order('created_at'), '成员'),
-      q(supabase.from('batches').select('*').order('given_at', { ascending: false }), '批次'),
-      q(supabase.from('batch_expenses').select('*').order('spent_at', { ascending: false }).limit(2000), '批次花销'),
-      q(supabase.from('loans').select('*').order('created_at'), '贷款'),
-      q(supabase.from('recurring').select('*').order('created_at'), '固定支出'),
+      q(supabase.from('accounts').select('*').eq('owner', uid).order('sort').order('created_at'), '账户'),
+      q(supabase.from('members').select('*').eq('owner', uid).order('sort').order('created_at'), '成员'),
+      q(supabase.from('batches').select('*').eq('owner', uid).order('given_at', { ascending: false }), '批次'),
+      q(supabase.from('batch_expenses').select('*').eq('owner', uid).order('spent_at', { ascending: false }).limit(2000), '批次花销'),
+      q(supabase.from('loans').select('*').eq('owner', uid).order('created_at'), '贷款'),
+      q(supabase.from('recurring').select('*').eq('owner', uid).order('created_at'), '固定支出'),
       q(supabase.from('fx_rates').select('*'), '汇率'),
-      q(supabase.from('net_worth_snapshots').select('*').gte('snap_date', sixMonthsAgo).order('snap_date'), '快照'),
-      q(supabase.from('transactions').select('*').gte('occurred_at', sixMonthsAgo).order('occurred_at', { ascending: false }).order('created_at', { ascending: false }).limit(1000), '流水'),
-      q(supabase.from('savings').select('*').gte('saved_at', sixMonthsAgo).order('saved_at', { ascending: false }).limit(1000), '省钱'),
-      q(supabase.from('save_goals').select('*').eq('active', true).order('sort'), '省钱目标'),
-      q(supabase.from('sec_daily').select('*').order('snap_date', { ascending: false }).limit(1), '行情'),
-      q(supabase.from('holdings').select('*').order('value', { ascending: false }), '持仓'),
+      q(supabase.from('net_worth_snapshots').select('*').eq('owner', uid).gte('snap_date', sixMonthsAgo).order('snap_date'), '快照'),
+      q(supabase.from('transactions').select('*').eq('owner', uid).gte('occurred_at', sixMonthsAgo).order('occurred_at', { ascending: false }).order('created_at', { ascending: false }).limit(1000), '流水'),
+      q(supabase.from('savings').select('*').eq('owner', uid).gte('saved_at', sixMonthsAgo).order('saved_at', { ascending: false }).limit(1000), '省钱'),
+      q(supabase.from('save_goals').select('*').eq('owner', uid).eq('active', true).order('sort'), '省钱目标'),
+      q(supabase.from('sec_daily').select('*').eq('owner', uid).order('snap_date', { ascending: false }).limit(1), '行情'),
+      q(supabase.from('holdings').select('*').eq('owner', uid).order('value', { ascending: false }), '持仓'),
     ])
     store.accounts = accounts
     store.members = members

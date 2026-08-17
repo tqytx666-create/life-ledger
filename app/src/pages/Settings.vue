@@ -12,6 +12,27 @@ const fxEdit = ref({ ...store.fx })
 const newPass = ref('')
 const passMsg = ref('')
 
+// 家庭
+import { onMounted } from 'vue'
+import { fmtCNY } from '../lib/fmt'
+const hh = ref(null)
+const inviteCode = ref('')
+onMounted(async () => {
+  try {
+    const { data } = await supabase.rpc('household_overview')
+    hh.value = data
+  } catch { /* 忽略 */ }
+})
+async function makeInvite() {
+  err.value = ''
+  try {
+    const { data, error } = await supabase.rpc('create_invite')
+    if (error) throw error
+    inviteCode.value = data
+    try { await navigator.clipboard.writeText(data) } catch { /* 手动复制 */ }
+  } catch (e) { err.value = e.message }
+}
+
 async function changePass() {
   passMsg.value = ''
   if ((newPass.value || '').length < 6) { passMsg.value = '至少 6 位'; return }
@@ -90,6 +111,32 @@ async function logout() {
       <button class="w-full flex items-center justify-between p-4 border-t" style="border-color: var(--hairline)" @click="router.push('/inbox')">
         <span>📥 随手拍收件箱</span><span style="color: var(--ink-3)">›</span>
       </button>
+    </div>
+
+    <!-- 我的家庭 -->
+    <div v-if="hh && hh.role" class="card p-4 mb-4">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-sm font-medium" style="color: var(--ink-2)">🏠 {{ hh.household }}</div>
+        <span class="text-xs px-2 py-0.5 rounded-full" :style="hh.role === 'head' ? 'background: var(--c-net); color:#171106' : 'background: var(--plane); color: var(--ink-3)'">
+          {{ hh.role === 'head' ? '家主' : '成员' }}</span>
+      </div>
+      <template v-if="hh.role === 'head'">
+        <div v-for="m in hh.members" :key="m.display_name" class="py-2 border-b last:border-0" style="border-color: var(--hairline)">
+          <div class="flex justify-between text-sm">
+            <span>{{ m.display_name }}<span v-if="m.role==='head'" class="text-xs ml-1" style="color: var(--ink-3)">(家主)</span></span>
+            <span class="tabular" :style="m.liquid < 0 ? 'color: var(--danger)' : ''">净 {{ fmtCNY(m.liquid, true) }}</span>
+          </div>
+          <div class="text-[11px] tabular" style="color: var(--ink-3)">本月 收{{ fmtCNY(m.month_income, true) }} / 支{{ fmtCNY(m.month_expense, true) }}</div>
+        </div>
+        <div class="mt-3">
+          <button class="px-4 py-2 rounded-lg text-sm border" style="border-color: var(--c-net); color: var(--c-net)" @click="makeInvite">+ 生成邀请码拉家人</button>
+          <div v-if="inviteCode" class="mt-2 text-sm" style="color: var(--ink-2)">
+            邀请码:<span class="tabular font-bold text-[17px] ml-1" style="color: var(--gold)">{{ inviteCode }}</span>
+            <span class="text-xs ml-2" style="color: var(--ink-3)">已复制,7天有效;对方注册时填入即可加入</span>
+          </div>
+        </div>
+      </template>
+      <p v-else class="text-xs" style="color: var(--ink-3)">你的账只有你和家主能看到</p>
     </div>
 
     <div class="card p-4 mb-4">

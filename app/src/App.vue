@@ -20,6 +20,7 @@ onMounted(async () => {
 })
 
 async function init() {
+  try { await supabase.rpc('ensure_household') } catch (e) { console.warn('ensure_household:', e.message) }
   await loadAll()
   await bootSettle()
 }
@@ -40,7 +41,10 @@ function hardRefresh() {
 </script>
 
 <template>
-  <Login v-if="!store.session" />
+  <template v-if="!store.session">
+    <router-view v-if="route.path === '/register'" />
+    <Login v-else />
+  </template>
   <template v-else>
     <div v-if="!store.ready" class="min-h-screen flex items-center justify-center">
       <div class="text-center">

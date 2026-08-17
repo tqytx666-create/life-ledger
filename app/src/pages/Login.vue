@@ -47,6 +47,7 @@ async function login() {
         </button>
         <p v-if="err" class="text-sm text-center" style="color: var(--danger)">{{ err }}</p>
       </form>
+      <button class="block mx-auto mt-6 text-sm" style="color: var(--gold)" @click="$router.push('/register')">没有账号?开一本自己的账 ›</button>
     </div>
   </div>
 </template>
