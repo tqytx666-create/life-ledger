@@ -14,6 +14,7 @@ import Wallet from './pages/Wallet.vue'
 import Stocks from './pages/Stocks.vue'
 import Register from './pages/Register.vue'
 import ImportBills from './pages/Import.vue'
+import AskBuy from './pages/AskBuy.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -32,5 +33,6 @@ export const router = createRouter({
     { path: '/stocks', component: Stocks },
     { path: '/register', component: Register },
     { path: '/import', component: ImportBills },
+    { path: '/askbuy', component: AskBuy },
   ],
 })

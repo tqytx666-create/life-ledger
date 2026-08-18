@@ -85,8 +85,12 @@ const recentSavings = computed(() => store.savings.slice(0, 8))
   <div class="max-w-md mx-auto px-4 pt-5" :class="{ 'bars-on': barsOn }">
     <div class="flex items-center justify-between mb-4 rise" style="--d:0">
       <h1 class="text-xl font-bold"><button class="mr-1" @click="router.back()">‹</button> 省钱作战</h1>
-      <button class="text-sm px-3 py-1.5 rounded-full text-white" style="background: var(--c-save)"
-        @click="router.push('/record?t=save')">+ 记省下</button>
+      <div class="flex gap-2">
+        <button class="text-sm px-3 py-1.5 rounded-full" style="background: var(--c-net)"
+          @click="router.push('/askbuy')">🤔 能买吗</button>
+        <button class="text-sm px-3 py-1.5 rounded-full" style="background: var(--c-save)"
+          @click="router.push('/record?t=save')">+ 记省下</button>
+      </div>
     </div>
 
     <!-- ===== 战区一:省利息 ===== -->
