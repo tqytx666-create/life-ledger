@@ -41,7 +41,7 @@ async function onScanPick(e) {
     const { error: e1 } = await supabase.storage.from('inbox').upload(path, f)
     if (e1) throw e1
     const { data: row, error: e2 } = await supabase.from('inbox_items')
-      .insert({ kind: 'image', path, note: '记账页拍单' }).select().single()
+      .insert({ kind: 'image', path, note: '记账页拍单', status: 'skipped', result: '识别中/未确认(不进取件队列)' }).select().single()
     if (e2) throw e2
     scanMsg.value = '🔍 识别中…'
     const { data, error: e3 } = await supabase.functions.invoke('ocr-inbox', { body: { id: row.id } })
