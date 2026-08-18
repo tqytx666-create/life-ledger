@@ -111,6 +111,9 @@ async function logout() {
       <button class="w-full flex items-center justify-between p-4 border-t" style="border-color: var(--hairline)" @click="router.push('/inbox')">
         <span>📥 随手拍收件箱</span><span style="color: var(--ink-3)">›</span>
       </button>
+      <button class="w-full flex items-center justify-between p-4 border-t" style="border-color: var(--hairline)" @click="router.push('/import')">
+        <span>📑 账单导入(微信/支付宝/美团)</span><span style="color: var(--ink-3)">›</span>
+      </button>
     </div>
 
     <!-- 我的家庭 -->

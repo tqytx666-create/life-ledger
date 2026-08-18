@@ -22,6 +22,15 @@ const scanBusy = ref(false)
 const scanMsg = ref('')
 const ocrItemId = ref('')   // 本次识别对应的收件箱条目,入账后标记
 
+async function cancelScan() {
+  if (ocrItemId.value) {
+    await supabase.from('inbox_items').update({ status: 'skipped', result: '用户放弃识别结果' }).eq('id', ocrItemId.value)
+  }
+  ocrItemId.value = ''; scanMsg.value = ''
+  amount.value = ''; note.value = ''; category.value = ''; date.value = todayStr()
+  type.value = 'expense'
+}
+
 async function onScanPick(e) {
   const f = (e.target.files || [])[0]
   if (!f) return
@@ -164,6 +173,9 @@ async function submit() {
         </div>
       </div>
     </label>
+    <button v-if="ocrItemId" class="w-full -mt-2 mb-4 py-2 rounded-lg text-[13px] border"
+      style="border-color: var(--hairline); color: var(--ink-3)" @click="cancelScan">
+      ✕ 不要这次识别结果,清空重填</button>
 
     <!-- 类型 -->
     <div class="flex gap-2 mb-4">

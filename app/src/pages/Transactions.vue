@@ -138,7 +138,10 @@ async function delSave(s) {
 
 <template>
   <div class="max-w-md mx-auto px-4 pt-6">
-    <h1 class="text-xl font-bold mb-4">流水</h1>
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold">流水</h1>
+      <button class="text-sm" style="color: var(--gold)" @click="$router.push('/import')">📑 导账单 ›</button>
+    </div>
 
     <div class="flex gap-2 mb-3">
       <button v-for="f in [['all', '全部'], ['expense', '支出'], ['income', '收入'], ['transfer', '转账'], ['save', '省下']]" :key="f[0]"
