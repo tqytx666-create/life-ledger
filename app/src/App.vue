@@ -35,8 +35,9 @@ const tabs = [
 const showTabs = computed(() => tabs.some((t) => t.path === route.path))
 const spinning = ref(false)
 const fabOpen = ref(false)
+const scanInput = ref(null)
 const FAB = [
-  { icon: 'camera', label: '拍小票 · 自动识别', to: '/record?focus=scan' },
+  { icon: 'camera', label: '拍小票 · 自动识别', action: 'scan' },
   { icon: 'spark', label: '问一嘴 · 这个能买吗', to: '/askbuy' },
   { icon: 'plus', label: '手动记一笔', to: '/record' },
 ]
@@ -45,7 +46,18 @@ function onTab(t) {
   fabOpen.value = false
   router.push(t.path)
 }
-function goFab(to) { fabOpen.value = false; router.push(to) }
+function goFab(f) {
+  fabOpen.value = false
+  if (f.action === 'scan') { scanInput.value?.click(); return }
+  router.push(f.to)
+}
+function onScanFile(e) {
+  const file = (e.target.files || [])[0]
+  e.target.value = ''
+  if (!file) return
+  store.pendingScanFile = file
+  router.push('/record?focus=scan')
+}
 function hardRefresh() {
   spinning.value = true
   setTimeout(() => window.location.reload(), 350)
@@ -78,14 +90,16 @@ function hardRefresh() {
       <div v-if="fabOpen" class="fixed inset-0 z-40 fab-backdrop" @click="fabOpen = false"></div>
       <div v-if="fabOpen" class="fixed inset-x-0 z-50 flex flex-col items-center gap-4"
         style="bottom: calc(env(safe-area-inset-bottom, 0px) + 6.5rem)">
-        <button v-for="(f, i) in FAB" :key="f.to" class="fab-item flex items-center gap-4 px-7 py-4 rounded-2xl w-[82%] max-w-xs"
+        <button v-for="(f, i) in FAB" :key="f.label" class="fab-item flex items-center gap-4 px-7 py-4 rounded-2xl w-[82%] max-w-xs"
           :style="`animation-delay: ${(FAB.length - 1 - i) * 60}ms; background: var(--surface-1); border: 1.5px solid rgba(216,178,92,.5); box-shadow: 0 8px 28px rgba(0,0,0,.5)`"
-          @click="goFab(f.to)">
+          @click="goFab(f)">
           <span class="w-13 h-13 rounded-full flex items-center justify-center shrink-0" style="background: var(--c-net)">
             <Icon :name="f.icon" :size="26" /></span>
           <span class="text-[19px] font-semibold" style="color: var(--ink-1)">{{ f.label }}</span>
         </button>
       </div>
+
+      <input ref="scanInput" type="file" accept="image/*" class="hidden" @change="onScanFile" />
 
       <button class="fixed right-4 z-50 w-9 h-9 rounded-full flex items-center justify-center"
         style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem); background: rgba(22,21,26,.85); border: 1px solid var(--hairline); color: var(--gold); backdrop-filter: blur(8px)"

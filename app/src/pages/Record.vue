@@ -21,7 +21,11 @@ const ok = ref('')
 const scanBusy = ref(false)
 const scanPulse = ref(false)
 onMounted(() => {
-  if (location.hash.includes('focus=scan')) {
+  if (store.pendingScanFile) {
+    const f = store.pendingScanFile
+    store.pendingScanFile = null
+    processScan(f)
+  } else if (location.hash.includes('focus=scan')) {
     scanPulse.value = true
     setTimeout(() => { scanPulse.value = false }, 2000)
   }
@@ -40,6 +44,11 @@ async function cancelScan() {
 
 async function onScanPick(e) {
   const f = (e.target.files || [])[0]
+  e.target.value = ''
+  await processScan(f)
+}
+
+async function processScan(f) {
   if (!f) return
   scanBusy.value = true; scanMsg.value = '上传中…'; err.value = ''
   try {
@@ -81,7 +90,6 @@ async function onScanPick(e) {
     err.value = '识别失败:' + (ex.message || ex)
   } finally {
     scanBusy.value = false
-    e.target.value = ''
   }
 }
 
