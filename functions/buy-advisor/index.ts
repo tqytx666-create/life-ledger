@@ -1,4 +1,4 @@
-// 买前问一嘴:商品截图/文字 + 本人财务上下文 → 五维购买建议
+// 买前问一嘴 v2:两段式 —— 视觉识别商品 → 服务端规则定判决 → 模型只负责解释
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CORS = {
@@ -7,6 +7,17 @@ const CORS = {
 };
 const j = (o: unknown, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
+
+async function zhipu(model: string, content: unknown, temperature = 0.2) {
+  const r = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${Deno.env.get("ZHIPU_KEY")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, temperature, messages: [{ role: "user", content }] }),
+  });
+  if (!r.ok) throw new Error("模型调用失败 " + r.status);
+  const out = await r.json();
+  return String(out?.choices?.[0]?.message?.content ?? "").replace(/```json|```/g, "").trim();
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -20,67 +31,119 @@ Deno.serve(async (req) => {
     const uid = ud?.user?.id;
     if (!uid) return j({ error: "未登录" }, 401);
 
-    // ===== 财务上下文(全部服务端算好,模型只负责判断) =====
-    const month = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 7);
-    const [snapR, goalsR, txR, savR, wsdR] = await Promise.all([
-      svc.from("net_worth_snapshots").select("liquid_cny,total_cny").eq("owner", uid).order("snap_date", { ascending: false }).limit(1),
+    // ===== 第一段:识别商品(视觉) =====
+    const recogPrompt = `识别${text ? "「" + text + "」" : "图中商品"}。只输出严格JSON:
+{"product":"商品名(简短)","price":数字(实付价,识别不出就用文字里说的),"category":"餐饮|服饰|数码|美妆|家居|运动|购物|娱乐|订阅|教育|医疗|交通|其他 选一","necessity":"刚需|生产力工具|改善型|纯欲望 选一"}`;
+    const c1: unknown[] = [];
+    if (image_b64) c1.push({ type: "image_url", image_url: { url: image_b64 } });
+    c1.push({ type: "text", text: recogPrompt });
+    let item: { product: string; price: number; category: string; necessity: string };
+    try { item = JSON.parse(await zhipu("glm-4v-flash", c1)); }
+    catch { return j({ error: "没认出商品,试试打字描述+价格" }, 422); }
+    const price = Number(item.price) || 0;
+
+    // ===== 财务上下文 =====
+    const now = new Date(Date.now() + 8 * 3600e3);
+    const month = now.toISOString().slice(0, 7);
+    const dayOfMonth = now.getUTCDate();
+    const daysInMonth = new Date(now.getUTCFullYear(), now.getUTCMonth() + 1, 0).getDate();
+    const pace = dayOfMonth / daysInMonth;
+    const hour = now.getUTCHours();
+
+    const [goalsR, txR, wsdR] = await Promise.all([
       svc.from("save_goals").select("*").eq("owner", uid).eq("active", true),
       svc.from("transactions").select("type,amount,category,note,occurred_at").eq("owner", uid).gte("occurred_at", month + "-01"),
-      svc.from("savings").select("amount").eq("owner", uid).gte("saved_at", month + "-01"),
-      svc.from("accounts").select("name,balance").eq("owner", uid).eq("name", "网商贷"),
+      svc.from("accounts").select("balance").eq("owner", uid).eq("name", "网商贷"),
     ]);
-    const liquid = Number(snapR.data?.[0]?.liquid_cny ?? snapR.data?.[0]?.total_cny ?? 0);
-    let mIn = 0, mOut = 0;
-    const recentBuys: string[] = [];
+    let mIn = 0, mOut = 0, similar30d = 0;
     for (const t of txR.data ?? []) {
       if (t.type === "income") mIn += Number(t.amount);
       if (t.type === "expense") {
         mOut += Number(t.amount);
-        if (["购物", "娱乐", "订阅", "教育"].includes(t.category)) recentBuys.push(`${t.occurred_at} ${t.category} ¥${t.amount} ${String(t.note).slice(0, 22)}`);
+        if (t.category === item.category || (item.category === "服饰" && t.category === "购物")) similar30d++;
       }
     }
-    const goals = (goalsR.data ?? []).map((g) => {
-      const cats = Array.isArray(g.cats) ? g.cats : JSON.parse(g.cats || "[]");
+    const mNet = mIn - mOut;
+    const wsdOwed = wsdR.data?.length ? Math.max(-Number(wsdR.data[0].balance), 0) : 0;
+
+    // 找命中的预算战区(品类映射宽松:服饰/数码/美妆/家居/运动 都算购物系)
+    const shopLike = ["服饰", "数码", "美妆", "家居", "运动", "购物"];
+    let hitGoal: { name: string; cap: number; spent: number } | null = null;
+    for (const g of goalsR.data ?? []) {
+      const cats: string[] = Array.isArray(g.cats) ? g.cats : JSON.parse(g.cats || "[]");
+      const match = cats.includes(item.category) ||
+        (shopLike.includes(item.category) && cats.some((c: string) => shopLike.includes(c)));
+      if (!match) continue;
       let spent = 0;
       for (const t of txR.data ?? []) {
         if (t.type !== "expense") continue;
         if (cats.includes(t.category) || (g.kw && String(t.note).includes(g.kw))) spent += Number(t.amount);
       }
-      return `${g.name}:本月已花${spent.toFixed(0)}/上限${Number(g.cap).toFixed(0)}`;
+      hitGoal = { name: g.name, cap: Number(g.cap), spent };
+      break;
+    }
+
+    // ===== 第二段:确定性规则打分(判决不交给模型) =====
+    const dims: { name: string; pass: boolean; fact: string }[] = [];
+    // ①预算余量:命中战区看"花完这笔是否仍在上限内"
+    let budgetPass: boolean, budgetFact: string;
+    if (hitGoal) {
+      const after = hitGoal.spent + price;
+      budgetPass = after <= hitGoal.cap;
+      budgetFact = `命中「${hitGoal.name}」战区:已花${hitGoal.spent.toFixed(0)}/上限${hitGoal.cap.toFixed(0)},买完变${after.toFixed(0)},${budgetPass ? "仍在预算内" : `超线${(after - hitGoal.cap).toFixed(0)}元`}`;
+    } else {
+      budgetPass = price <= Math.max(mNet, 0) * 0.05 + 500;
+      budgetFact = `没有对应预算战区;金额${price}元 vs 本月净结余${mNet.toFixed(0)}元`;
+    }
+    if (!budgetPass && price <= 100) { budgetPass = true; budgetFact += "(百元内小额豁免)"; }
+    dims.push({ name: "预算余量", pass: budgetPass, fact: budgetFact });
+    // ②消费节奏:买完后战区进度 vs 时间进度
+    let pacePass = true, paceFact = `本月时间已过${(pace * 100).toFixed(0)}%`;
+    if (hitGoal && hitGoal.cap > 0) {
+      const afterPct = (hitGoal.spent + price) / hitGoal.cap;
+      pacePass = afterPct <= pace + 0.25;
+      paceFact = `买完后该战区用掉${(afterPct * 100).toFixed(0)}%额度,时间才过${(pace * 100).toFixed(0)}%,${pacePass ? "节奏健康" : "花得比日子快"}`;
+    }
+    dims.push({ name: "消费节奏", pass: pacePass, fact: paceFact });
+    // ③债务机会成本:只对大额非必需较真
+    const isNeed = item.necessity === "刚需" || item.necessity === "生产力工具";
+    const debtPass = wsdOwed <= 0 || price <= 3000 || isNeed;
+    const debtDays = wsdOwed > 0 ? (price / (wsdOwed * 0.12 / 365)).toFixed(1) : "0";
+    dims.push({ name: "债务机会成本", pass: debtPass, fact: wsdOwed > 0 ? `网商贷还欠${wsdOwed.toFixed(0)},这笔=约${debtDays}天利息${debtPass ? ",在可容忍范围" : ",大额非必需建议先还债"}` : "无高息债,此项不扣分" });
+    // ④重复消费
+    const repeatPass = similar30d < 6 || price < 200;
+    dims.push({ name: "重复消费", pass: repeatPass, fact: `本月同类消费已${similar30d}笔${repeatPass ? ",不算频繁" : ",有点上头了"}` });
+    // ⑤冲动指数
+    const impulsePass = !(hour >= 0 && hour < 6 && item.necessity === "纯欲望" && price > 500);
+    dims.push({ name: "冲动指数", pass: impulsePass, fact: impulsePass ? "时间和金额都正常" : `现在是凌晨${hour}点,纯欲望大额,冲动高危` });
+
+    const passes = dims.filter((d) => d.pass).length;
+    let verdict: string;
+    if (!budgetPass) verdict = price > Math.max(mNet, 3000) * 0.3 ? "skip" : "wait";
+    else if (passes >= 4) verdict = "buy";
+    else if (passes === 3) verdict = isNeed ? "buy" : "wait";
+    else verdict = "wait";
+    if (wsdOwed > 0 && item.necessity === "纯欲望" && price > Math.max(mNet, 0) * 0.3 && price > 5000) verdict = "skip";
+
+    // ===== 第三段:模型只写"人话"(判决与事实已锁死) =====
+    const explainPrompt = `你是他的私人财务管家,懂行、像朋友、不说教。商品:${item.product} ${price}元(${item.necessity})。
+系统判决(不可更改):${verdict === "buy" ? "买" : verdict === "wait" ? "缓一缓" : "别买"}。
+五维事实(pass表示该维度OK):${JSON.stringify(dims)}
+补充:本月净结余${mNet.toFixed(0)}元${wsdOwed > 0 ? ",网商贷还欠" + wsdOwed.toFixed(0) + "元(年化12%)" : ""}。
+只输出严格JSON:{"title":"一句话结论,口语化带态度","comments":["对应五维各一句话点评,顺序一致,基于事实别编数"],"math":["1-2条有冲击力的等价换算"],"advice":"两三句具体可执行的建议${verdict !== "buy" ? ",给出'缓24小时/找平替/等大促'这类动作" : ",痛快买的话提一句怎么买更划算"}"}`;
+    let ex: { title: string; comments: string[]; math: string[]; advice: string };
+    try { ex = JSON.parse(await zhipu("glm-4-flash", [{ type: "text", text: explainPrompt }], 0.4)); }
+    catch { ex = { title: verdict === "buy" ? "预算内,买吧" : "先缓缓", comments: dims.map((d) => d.fact), math: [], advice: "" }; }
+
+    return j({
+      result: {
+        product: item.product, price, verdict,
+        title: ex.title,
+        dimensions: dims.map((d, i) => ({ name: d.name, pass: d.pass, comment: ex.comments?.[i] || d.fact })),
+        math: ex.math || [], advice: ex.advice || "",
+        blocking: !budgetPass && hitGoal ? `拦你的是「${hitGoal.name}」预算(${hitGoal.spent.toFixed(0)}/${hitGoal.cap.toFixed(0)})——觉得上限不合理可以让管家调` : null,
+      },
     });
-    const saved = (savR.data ?? []).reduce((s, x) => s + Number(x.amount), 0);
-    const wsdOwed = wsdR.data?.length ? -Number(wsdR.data[0].balance) : 0;
-    const dayOfMonth = new Date(Date.now() + 8 * 3600e3).getDate();
-
-    const ctx = `【他的本月财务实况】
-- 可动净资产:${liquid.toFixed(0)}元${liquid < 0 ? "(还是负的,正在还债翻身期)" : ""}
-- 本月(已过${dayOfMonth}天):收入${mIn.toFixed(0)},支出${mOut.toFixed(0)},净结余${(mIn - mOut).toFixed(0)}
-- 省钱目标战区:${goals.join(";") || "未设置"}
-- 本月已省下:${saved.toFixed(0)}元
-${wsdOwed > 0 ? `- 高息负债:网商贷还欠${wsdOwed.toFixed(0)}元(年化12%,每月白烧利息${(wsdOwed * 0.01).toFixed(0)}元)` : ""}
-- 近期购物/娱乐消费:${recentBuys.slice(0, 12).join(" | ") || "无"}
-- 当前时刻:${new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 16).replace("T", " ")}(深夜下单要提醒冲动)`;
-
-    const ask = `${ctx}
-
-【任务】他想买${text ? "「" + text + "」" : "图中的商品"}。先识别商品和价格(有图以图为准),然后从五个维度分析该不该买,只输出严格JSON(不要markdown):
-{"product":"商品名","price":数字,"verdict":"buy|wait|skip","title":"一句话结论(口语化,像懂钱的老哥)","dimensions":[{"name":"预算余量","pass":true/false,"comment":"一句话"},{"name":"省钱目标","pass":..,"comment":".."},{"name":"债务机会成本","pass":..,"comment":"换算成网商贷利息说"},{"name":"重复消费","pass":..,"comment":"结合近期消费清单"},{"name":"冲动指数","pass":..,"comment":"结合时间和价格占结余比例"}],"math":["这笔钱=网商贷X天利息","=本月结余的X%","其他有冲击力的换算"],"advice":"两三句实操建议(可以给'缓24小时'/'找平替'/'直接买'这类具体动作)"}
-原则:刚需和生产力工具宽容,纯欲望消费严格;高息债没清时大额非必需品倾向wait/skip;金额小于结余2%且预算内可以痛快buy。语气像朋友,不说教。`;
-
-    const content: unknown[] = [];
-    if (image_b64) content.push({ type: "image_url", image_url: { url: image_b64 } });
-    content.push({ type: "text", text: ask });
-
-    const r = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${Deno.env.get("ZHIPU_KEY")}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "glm-4v-flash", temperature: 0.3, messages: [{ role: "user", content }] }),
-    });
-    if (!r.ok) return j({ error: "模型调用失败 " + r.status }, 502);
-    const out = await r.json();
-    let t2: string = out?.choices?.[0]?.message?.content ?? "";
-    t2 = t2.replace(/```json|```/g, "").trim();
-    try { return j({ result: JSON.parse(t2) }); } catch { return j({ error: "解析失败", raw: t2 }, 500); }
   } catch (e) {
     return j({ error: String(e) }, 500);
   }

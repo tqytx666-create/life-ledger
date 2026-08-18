@@ -105,13 +105,13 @@ function reset() { result.value = null; imgPreview.value = ''; text.value = ''; 
 
     <template v-else>
       <div class="card p-5 mb-4" :style="`border-color: ${VERDICT[result.verdict]?.color || 'var(--hairline)'}55`">
-        <div class="flex items-center gap-3 mb-1">
-          <img v-if="imgPreview" :src="imgPreview" class="w-12 h-12 rounded-lg object-cover" />
-          <div class="min-w-0">
-            <div class="text-[14px] truncate" style="color: var(--ink-2)">{{ result.product }}
-              <span class="tabular font-semibold" style="color: var(--ink-1)">{{ fmtCNY(Number(result.price) || 0) }}</span></div>
+        <div class="flex items-start gap-3 mb-1">
+          <img v-if="imgPreview" :src="imgPreview" class="w-12 h-12 rounded-lg object-cover shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-[13px] truncate" style="color: var(--ink-2)">{{ result.product }}</div>
+            <div class="tabular font-bold text-[26px] leading-tight gold-text">{{ fmtCNY(Number(result.price) || 0) }}</div>
           </div>
-          <span class="ml-auto shrink-0 px-3 py-1.5 rounded-full font-bold text-[15px]"
+          <span class="shrink-0 px-3 py-1.5 rounded-full font-bold text-[15px]"
             :style="`background: ${VERDICT[result.verdict]?.color}; color: #171106`">
             {{ VERDICT[result.verdict]?.label || result.verdict }}</span>
         </div>
@@ -129,6 +129,7 @@ function reset() { result.value = null; imgPreview.value = ''; text.value = ''; 
         </div>
 
         <div class="mt-3 text-[13px]" style="color: var(--ink-2)">{{ result.advice }}</div>
+        <div v-if="result.blocking" class="mt-2 text-[12px] px-2.5 py-1.5 rounded-lg" style="background: rgba(216,178,92,.08); color: var(--gold)">⛔ {{ result.blocking }}</div>
       </div>
 
       <button v-if="result.verdict !== 'buy' && !savedOk" :disabled="busy"
