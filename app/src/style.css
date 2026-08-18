@@ -169,3 +169,16 @@ select option { background: var(--surface-1); color: var(--ink-1); }
   pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) { .hero-sheen { display: none; } }
+
+/* 拍单识别大按钮:金渐变,按下微缩 */
+.scan-btn {
+  background: linear-gradient(135deg, #8a6f35 0%, #d8b25c 45%, #f2dda2 100%);
+  color: #171106;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(216, 178, 92, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+  position: relative;
+  overflow: hidden;
+}
+.scan-btn:active { transform: scale(0.97); box-shadow: 0 3px 12px rgba(216,178,92,.2); }
+.scan-btn .hero-sheen { animation-duration: 5s; }

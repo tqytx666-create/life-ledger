@@ -16,6 +16,11 @@ const err = ref('')
 const quickNote = ref('')
 const doneCount = ref(0)
 const editId = ref('')      // 展开编辑的条目
+const viewer = ref('')      // 大图查看
+const viewerZoom = ref(false)
+function openViewer(it) {
+  if (previews.value[it.id]) { viewer.value = previews.value[it.id]; viewerZoom.value = false }
+}
 
 const accounts = computed(() => store.accounts.filter((a) => !a.archived && !['loan','property','vehicle'].includes(a.type)))
 
@@ -185,7 +190,7 @@ async function del(it) {
     <div v-for="it in items" :key="it.id" class="card p-3 mb-3">
       <div class="flex gap-3">
         <img v-if="it.kind === 'image' && previews[it.id]" :src="previews[it.id]"
-          class="w-16 h-16 rounded-lg object-cover shrink-0" />
+          class="w-16 h-16 rounded-lg object-cover shrink-0 cursor-zoom-in" @click="openViewer(it)" />
         <div v-else class="w-16 h-16 rounded-lg flex items-center justify-center text-2xl shrink-0" style="background: var(--plane)">
           {{ it.kind === 'audio' ? '🎙' : '✏️' }}</div>
         <div class="flex-1 min-w-0">
@@ -246,6 +251,19 @@ async function del(it) {
         </select>
         <input v-model="editState(it).date" type="date" class="w-full card px-2 py-2 text-sm outline-none" />
       </div>
+    </div>
+
+    <!-- 大图查看 -->
+    <div v-if="viewer" class="fixed inset-0 z-[100] flex items-center justify-center"
+      style="background: rgba(4,4,6,.96)" @click.self="viewer = ''">
+      <img :src="viewer" class="transition-transform duration-200"
+        :class="viewerZoom ? 'max-w-none w-[180%] cursor-zoom-out' : 'max-w-full max-h-full object-contain cursor-zoom-in'"
+        :style="viewerZoom ? 'transform-origin: center top' : ''"
+        @click="viewerZoom = !viewerZoom" />
+      <button class="fixed top-4 right-4 w-9 h-9 rounded-full text-lg"
+        style="background: rgba(22,21,26,.9); border: 1px solid var(--hairline); color: var(--ink-1)"
+        @click="viewer = ''">✕</button>
+      <div class="fixed bottom-6 inset-x-0 text-center text-[12px]" style="color: var(--ink-3)">点图片放大/缩小 · 点空白处关闭</div>
     </div>
   </div>
 </template>

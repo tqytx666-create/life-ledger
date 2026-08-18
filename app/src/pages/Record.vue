@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { store, recordTx, loadAll } from '../lib/store'
 import { EXPENSE_CATS, INCOME_CATS, SAVE_WAYS, todayStr, fmtMoney } from '../lib/fmt'
+import Icon from '../components/Icon.vue'
 
 const router = useRouter()
 const type = ref(new URLSearchParams(location.hash.split('?')[1] || '').get('t') === 'save' ? 'save' : 'expense')
@@ -17,6 +18,56 @@ const batchId = ref('')
 const busy = ref(false)
 const err = ref('')
 const ok = ref('')
+const scanBusy = ref(false)
+const scanMsg = ref('')
+const ocrItemId = ref('')   // 本次识别对应的收件箱条目,入账后标记
+
+async function onScanPick(e) {
+  const f = (e.target.files || [])[0]
+  if (!f) return
+  scanBusy.value = true; scanMsg.value = '上传中…'; err.value = ''
+  try {
+    const ext = (f.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error: e1 } = await supabase.storage.from('inbox').upload(path, f)
+    if (e1) throw e1
+    const { data: row, error: e2 } = await supabase.from('inbox_items')
+      .insert({ kind: 'image', path, note: '记账页拍单' }).select().single()
+    if (e2) throw e2
+    scanMsg.value = '🔍 识别中…'
+    const { data, error: e3 } = await supabase.functions.invoke('ocr-inbox', { body: { id: row.id } })
+    if (e3) throw e3
+    const d = data?.draft
+    if (!d || !d.is_bill) {
+      scanMsg.value = ''
+      err.value = '这张图不太像账单,你手动填一下吧'
+      await supabase.from('inbox_items').update({ status: 'skipped', result: '识别:非账单' }).eq('id', row.id)
+      return
+    }
+    // 回填表单
+    ocrItemId.value = row.id
+    type.value = d.direction === 'income' ? 'income' : 'expense'
+    amount.value = d.amount || ''
+    category.value = (type.value === 'income' ? INCOME_CATS : EXPENSE_CATS).includes(d.category) ? d.category : '其他'
+    note.value = '拍单|' + (d.merchant || '')
+    if (d.date) date.value = d.date
+    const hint = (d.method || '')
+    const hit = accounts.value.find((a) => {
+      const base = a.name.replace(/\(.*?\)/g, '')
+      const tail = (a.name.match(/\((\d{4})\)/) || [])[1]
+      return (base && hint.includes(base)) || (tail && hint.includes(tail)) ||
+        (hint.includes('美团月付') && a.name === '美团月付') || (hint.includes('零钱') && a.name.includes('微信零钱'))
+    })
+    if (hit) accountId.value = hit.id
+    scanMsg.value = `✓ 识别好了${(d.confidence ?? 1) < 0.7 ? '(置信度低,核对一下)' : ',核对后点记入账本'}`
+  } catch (ex) {
+    scanMsg.value = ''
+    err.value = '识别失败:' + (ex.message || ex)
+  } finally {
+    scanBusy.value = false
+    e.target.value = ''
+  }
+}
 
 // 账户排序:浦发第一,兴业第二,其余按近半年使用次数
 const PIN = ['浦发银行卡(6197)', '兴业银行卡(1268)']
@@ -64,7 +115,7 @@ async function submit() {
   if (type.value === 'transfer' && !peerId.value) { err.value = '选一下转入账户'; return }
   busy.value = true
   try {
-    await recordTx({
+    const txId = await recordTx({
       p_account_id: accountId.value,
       p_type: type.value,
       p_amount: amt,
@@ -78,6 +129,11 @@ async function submit() {
     })
     ok.value = '记好了 ✓'
     localStorage.setItem('ll_last_acc', accountId.value)
+    if (ocrItemId.value) {
+      await supabase.from('transactions').update({ verified: false }).eq('id', txId)
+      await supabase.from('inbox_items').update({ status: 'done', result: '记账页拍单入账(待复核)' }).eq('id', ocrItemId.value)
+      ocrItemId.value = ''
+    }
     amount.value = ''; note.value = ''; batchId.value = ''
     setTimeout(() => { ok.value = '' }, 1500)
   } catch (e) {
@@ -90,10 +146,24 @@ async function submit() {
 
 <template>
   <div class="max-w-md mx-auto px-4 pt-6">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-3">
       <h1 class="text-xl font-bold">记一笔</h1>
-      <button class="text-sm" style="color: var(--c-net)" @click="router.push('/inbox')">📥 随手拍 ›</button>
+      <button class="text-sm" style="color: var(--ink-3)" @click="router.push('/inbox')">收件箱 ›</button>
     </div>
+
+    <!-- 拍单识别 -->
+    <label class="scan-btn block p-4 mb-4 cursor-pointer">
+      <div class="hero-sheen"></div>
+      <input type="file" accept="image/*" class="hidden" @change="onScanPick" :disabled="scanBusy" />
+      <div class="flex items-center gap-3">
+        <span class="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style="background: rgba(23,17,6,.18)">
+          <Icon name="camera" :size="24" /></span>
+        <div>
+          <div class="font-bold text-[16px]">{{ scanBusy ? (scanMsg || '处理中…') : '拍小票 · 截图识别' }}</div>
+          <div class="text-[12px]" style="opacity:.75">{{ scanBusy ? '几秒钟就好' : (scanMsg || '拍完自动填好账,你只管确认') }}</div>
+        </div>
+      </div>
+    </label>
 
     <!-- 类型 -->
     <div class="flex gap-2 mb-4">
