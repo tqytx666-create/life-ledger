@@ -256,6 +256,17 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
       </button>
     </div>
 
+    <!-- 买前问一嘴 -->
+    <button class="w-full card p-3.5 mb-4 flex items-center gap-3 rise text-left" style="--d:2; border-color: rgba(216,178,92,.35)"
+      @click="router.push('/askbuy')">
+      <span class="text-xl">🤔</span>
+      <span class="flex-1">
+        <span class="text-[14px] font-medium block">想买个东西?先问一嘴</span>
+        <span class="text-[11px] block" style="color: var(--ink-3)">传商品截图,按你的预算和目标给判断</span>
+      </span>
+      <span style="color: var(--gold)">›</span>
+    </button>
+
     <!-- 高息歼灭战 -->
     <div v-if="wsd.owed > 0" class="card p-4 mb-4 rise" style="--d:2">
       <div class="flex items-center justify-between mb-1">

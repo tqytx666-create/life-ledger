@@ -176,6 +176,9 @@ async function submit() {
     <button v-if="ocrItemId" class="w-full -mt-2 mb-4 py-2 rounded-lg text-[13px] border"
       style="border-color: var(--hairline); color: var(--ink-3)" @click="cancelScan">
       ✕ 不要这次识别结果,清空重填</button>
+    <button class="w-full -mt-1 mb-4 py-2.5 rounded-xl text-[13px] border flex items-center justify-center gap-1.5"
+      style="border-color: rgba(216,178,92,.35); color: var(--gold)" @click="router.push('/askbuy')">
+      🤔 还没下单?买前先问一嘴 ›</button>
 
     <!-- 类型 -->
     <div class="flex gap-2 mb-4">
