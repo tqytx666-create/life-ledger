@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
 
     // ===== 第一段:识别商品(视觉) =====
     const recogPrompt = `识别${text ? "「" + text + "」" : "图中商品"}。只输出严格JSON:
-{"product":"商品名(简短)","price":数字(实付价,识别不出就用文字里说的),"category":"餐饮|服饰|数码|美妆|家居|运动|购物|娱乐|订阅|教育|医疗|交通|其他 选一","necessity":"刚需|生产力工具|改善型|纯欲望 选一"}`;
+{"product":"商品名(简短)","price":数字,"category":"餐饮|服饰|数码|美妆|家居|运动|购物|娱乐|订阅|教育|医疗|交通|其他 选一","necessity":"刚需|生产力工具|改善型|纯欲望 选一"}
+取价规则(重要):1)若是支付成功/订单/结算页,price取"交易成功/实付/合计"的总金额,绝不取单件商品价,尤其忽略¥0的赠品行;2)商品页取现价(优惠后);3)识别不到有效价格,price给0。商品名:支付单取店铺名或主要商品。`;
     const c1: unknown[] = [];
     if (image_b64) c1.push({ type: "image_url", image_url: { url: image_b64 } });
     c1.push({ type: "text", text: recogPrompt });
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
     try { item = JSON.parse(await zhipu("glm-4v-flash", c1)); }
     catch { return j({ error: "没认出商品,试试打字描述+价格" }, 422); }
     const price = Number(item.price) || 0;
+    if (price <= 0) return j({ error: "没认出有效价格。补一句再问,比如:「" + (item.product || "这个") + " 20块」" }, 422);
 
     // ===== 财务上下文 =====
     const now = new Date(Date.now() + 8 * 3600e3);
@@ -50,11 +52,12 @@ Deno.serve(async (req) => {
     const pace = dayOfMonth / daysInMonth;
     const hour = now.getUTCHours();
 
-    const [goalsR, txR, wsdR, prefR] = await Promise.all([
+    const [goalsR, txR, wsdR, prefR, journalR] = await Promise.all([
       svc.from("save_goals").select("*").eq("owner", uid).eq("active", true),
       svc.from("transactions").select("type,amount,category,note,occurred_at").eq("owner", uid).gte("occurred_at", month + "-01"),
       svc.from("accounts").select("balance").eq("owner", uid).eq("name", "网商贷"),
       svc.from("advice_prefs").select("key").eq("owner", uid).eq("muted", true).like("key", "askbuy:dim:%"),
+      svc.from("ledger_journal").select("at,kind,content").eq("owner", uid).order("at", { ascending: false }).limit(10),
     ]);
     const mutedDims = new Set((prefR.data ?? []).map((r) => String(r.key).replace("askbuy:dim:", "")));
     let mIn = 0, mOut = 0, similar30d = 0;
@@ -142,6 +145,8 @@ Deno.serve(async (req) => {
     const explainPrompt = `你是他的私人财务管家,懂行、像朋友、不说教。商品:${item.product} ${price}元(${item.necessity})。
 系统判决(不可更改):${verdict === "buy" ? "买" : verdict === "wait" ? "缓一缓" : "别买"},综合${score}分(满分100)。
 各维事实(pass表示该维度OK):${JSON.stringify(activeDims)}
+【他最近的大事记(你的记忆,点评时可自然引用)】
+${(journalR?.data ?? []).map((r: {at: string; content: string}) => r.at + " " + r.content).join("\n")}
 补充:本月净结余${mNet.toFixed(0)}元${wsdOwed > 0 ? ",网商贷还欠" + wsdOwed.toFixed(0) + "元(年化12%)" : ""}。
 只输出严格JSON:{"title":"一句话结论,口语化带态度","comments":["对应各维一句话点评,顺序一致,基于事实别编数"],"math":["1-2条有冲击力的等价换算"],"advice":"两三句具体可执行的建议${verdict !== "buy" ? ",给出'缓24小时/找平替/等大促'这类动作" : ",痛快买的话提一句怎么买更划算"}"}`;
     let ex: { title: string; comments: string[]; math: string[]; advice: string };

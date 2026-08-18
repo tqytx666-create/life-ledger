@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { store, recordTx, loadAll } from '../lib/store'
@@ -19,6 +19,13 @@ const busy = ref(false)
 const err = ref('')
 const ok = ref('')
 const scanBusy = ref(false)
+const scanPulse = ref(false)
+onMounted(() => {
+  if (location.hash.includes('focus=scan')) {
+    scanPulse.value = true
+    setTimeout(() => { scanPulse.value = false }, 2000)
+  }
+})
 const scanMsg = ref('')
 const ocrItemId = ref('')   // 本次识别对应的收件箱条目,入账后标记
 
@@ -161,7 +168,7 @@ async function submit() {
     </div>
 
     <!-- 拍单识别 -->
-    <label class="scan-btn block p-4 mb-4 cursor-pointer">
+    <label class="scan-btn block p-4 mb-4 cursor-pointer" :class="{ 'scan-pulse': scanPulse }">
       <div class="hero-sheen"></div>
       <input type="file" accept="image/*" class="hidden" @change="onScanPick" :disabled="scanBusy" />
       <div class="flex items-center gap-3">
