@@ -50,11 +50,13 @@ Deno.serve(async (req) => {
     const pace = dayOfMonth / daysInMonth;
     const hour = now.getUTCHours();
 
-    const [goalsR, txR, wsdR] = await Promise.all([
+    const [goalsR, txR, wsdR, prefR] = await Promise.all([
       svc.from("save_goals").select("*").eq("owner", uid).eq("active", true),
       svc.from("transactions").select("type,amount,category,note,occurred_at").eq("owner", uid).gte("occurred_at", month + "-01"),
       svc.from("accounts").select("balance").eq("owner", uid).eq("name", "网商贷"),
+      svc.from("advice_prefs").select("key").eq("owner", uid).eq("muted", true).like("key", "askbuy:dim:%"),
     ]);
+    const mutedDims = new Set((prefR.data ?? []).map((r) => String(r.key).replace("askbuy:dim:", "")));
     let mIn = 0, mOut = 0, similar30d = 0;
     for (const t of txR.data ?? []) {
       if (t.type === "income") mIn += Number(t.amount);
@@ -117,29 +119,40 @@ Deno.serve(async (req) => {
     const impulsePass = !(hour >= 0 && hour < 6 && item.necessity === "纯欲望" && price > 500);
     dims.push({ name: "冲动指数", pass: impulsePass, fact: impulsePass ? "时间和金额都正常" : `现在是凌晨${hour}点,纯欲望大额,冲动高危` });
 
-    const passes = dims.filter((d) => d.pass).length;
+    // 静音维度退出评审
+    const activeDims = dims.filter((d) => !mutedDims.has(d.name));
+    const WEIGHTS: Record<string, number> = { 预算余量: 30, 消费节奏: 20, 债务机会成本: 20, 重复消费: 15, 冲动指数: 15 };
+    const wTotal = activeDims.reduce((s2, d) => s2 + (WEIGHTS[d.name] || 10), 0) || 1;
+    let score = Math.round(activeDims.reduce((s2, d) => s2 + (d.pass ? (WEIGHTS[d.name] || 10) : 0), 0) / wTotal * 100);
+
+    const budgetActive = !mutedDims.has("预算余量");
+    const passes = activeDims.filter((d) => d.pass).length;
     let verdict: string;
-    if (!budgetPass) verdict = price > Math.max(mNet, 3000) * 0.3 ? "skip" : "wait";
-    else if (passes >= 4) verdict = "buy";
-    else if (passes === 3) verdict = isNeed ? "buy" : "wait";
+    if (budgetActive && !budgetPass) verdict = price > Math.max(mNet, 3000) * 0.3 ? "skip" : "wait";
+    else if (score >= 70) verdict = "buy";
+    else if (passes >= activeDims.length - 2 && isNeed) verdict = "buy";
     else verdict = "wait";
     if (wsdOwed > 0 && item.necessity === "纯欲望" && price > Math.max(mNet, 0) * 0.3 && price > 5000) verdict = "skip";
+    // 分数与判决区间对齐:买≥70 / 缓40-69 / 别买<40
+    if (verdict === "buy") score = Math.max(score, 70);
+    else if (verdict === "wait") score = Math.min(Math.max(score, 40), 69);
+    else score = Math.min(score, 39);
 
     // ===== 第三段:模型只写"人话"(判决与事实已锁死) =====
     const explainPrompt = `你是他的私人财务管家,懂行、像朋友、不说教。商品:${item.product} ${price}元(${item.necessity})。
-系统判决(不可更改):${verdict === "buy" ? "买" : verdict === "wait" ? "缓一缓" : "别买"}。
-五维事实(pass表示该维度OK):${JSON.stringify(dims)}
+系统判决(不可更改):${verdict === "buy" ? "买" : verdict === "wait" ? "缓一缓" : "别买"},综合${score}分(满分100)。
+各维事实(pass表示该维度OK):${JSON.stringify(activeDims)}
 补充:本月净结余${mNet.toFixed(0)}元${wsdOwed > 0 ? ",网商贷还欠" + wsdOwed.toFixed(0) + "元(年化12%)" : ""}。
-只输出严格JSON:{"title":"一句话结论,口语化带态度","comments":["对应五维各一句话点评,顺序一致,基于事实别编数"],"math":["1-2条有冲击力的等价换算"],"advice":"两三句具体可执行的建议${verdict !== "buy" ? ",给出'缓24小时/找平替/等大促'这类动作" : ",痛快买的话提一句怎么买更划算"}"}`;
+只输出严格JSON:{"title":"一句话结论,口语化带态度","comments":["对应各维一句话点评,顺序一致,基于事实别编数"],"math":["1-2条有冲击力的等价换算"],"advice":"两三句具体可执行的建议${verdict !== "buy" ? ",给出'缓24小时/找平替/等大促'这类动作" : ",痛快买的话提一句怎么买更划算"}"}`;
     let ex: { title: string; comments: string[]; math: string[]; advice: string };
     try { ex = JSON.parse(await zhipu("glm-4-flash", [{ type: "text", text: explainPrompt }], 0.4)); }
     catch { ex = { title: verdict === "buy" ? "预算内,买吧" : "先缓缓", comments: dims.map((d) => d.fact), math: [], advice: "" }; }
 
     return j({
       result: {
-        product: item.product, price, verdict,
+        product: item.product, price, verdict, score,
         title: ex.title,
-        dimensions: dims.map((d, i) => ({ name: d.name, pass: d.pass, comment: ex.comments?.[i] || d.fact })),
+        dimensions: activeDims.map((d, i) => ({ name: d.name, pass: d.pass, comment: ex.comments?.[i] || d.fact })),
         math: ex.math || [], advice: ex.advice || "",
         blocking: !budgetPass && hitGoal ? `拦你的是「${hitGoal.name}」预算(${hitGoal.spent.toFixed(0)}/${hitGoal.cap.toFixed(0)})——觉得上限不合理可以让管家调` : null,
       },

@@ -2,7 +2,7 @@
 // 省钱作战:三大战区 —— 省利息 / 省日常 / 省家人开支
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, toCNY } from '../lib/store'
+import { store, toCNY, isAdviceHidden, hideAdvice } from '../lib/store'
 import { fmtCNY, fmtDate } from '../lib/fmt'
 
 const router = useRouter()
@@ -109,24 +109,27 @@ const recentSavings = computed(() => store.savings.slice(0, 8))
         <div class="h-full rounded-full cat-bar" style="background: linear-gradient(90deg, #1baf7a, #0ca30c)"
           :style="{ transform: barsOn ? `scaleX(${Math.max(wsd.progress, 0.015)})` : 'scaleX(0)' }"></div>
       </div>
-      <div class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg" style="background: var(--plane); color: var(--ink-2)">
-        💡 卖股票的钱、每月结余、卖闲置的钱全往这砸;每还1万,每月利息少100,一年省1200。先歼12%部分,4.5%那12.5万不急</div>
+      <div v-if="!isAdviceHidden('tip:wsd')" class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg flex gap-2" style="background: var(--plane); color: var(--ink-2)">
+        <span class="flex-1">💡 卖股票的钱、每月结余、卖闲置的钱全往这砸;每还1万,每月利息少100,一年省1200。先歼12%部分,4.5%那12.5万不急</span>
+        <button class="shrink-0 self-start" style="color: var(--ink-3)" @click="hideAdvice('tip:wsd')">✕</button></div>
     </div>
     <div class="card p-4 mb-3 rise" style="--d:2">
       <div class="flex items-center justify-between">
         <div class="text-[15px] font-medium">理想车贷尾款</div>
         <div class="tabular text-sm" style="color: var(--danger)">{{ fmtCNY(lixiang, true) }}</div>
       </div>
-      <div class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg" style="background: var(--plane); color: var(--ink-2)">
-        💡 车已卖贷还在。打理想金融客服问「提前结清价」,通常免剩余利息,可能省几千</div>
+      <div v-if="!isAdviceHidden('tip:lixiang')" class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg flex gap-2" style="background: var(--plane); color: var(--ink-2)">
+        <span class="flex-1">💡 车已卖贷还在。打理想金融客服问「提前结清价」,通常免剩余利息,可能省几千</span>
+        <button class="shrink-0 self-start" style="color: var(--ink-3)" @click="hideAdvice('tip:lixiang')">✕</button></div>
     </div>
     <div class="card p-4 mb-4 rise" style="--d:2">
       <div class="flex items-center justify-between">
         <div class="text-[15px] font-medium">券商融资 ~6%</div>
         <div class="tabular text-sm" style="color: var(--danger)">约 ¥22万</div>
       </div>
-      <div class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg" style="background: var(--plane); color: var(--ink-2)">
-        💡 信用户降杠杆时优先了结,月息约1,100;你说过尽量卖股还债,卖了报我更新持仓</div>
+      <div v-if="!isAdviceHidden('tip:margin')" class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg flex gap-2" style="background: var(--plane); color: var(--ink-2)">
+        <span class="flex-1">💡 信用户降杠杆时优先了结,月息约1,100;你说过尽量卖股还债,卖了报我更新持仓</span>
+        <button class="shrink-0 self-start" style="color: var(--ink-3)" @click="hideAdvice('tip:margin')">✕</button></div>
     </div>
 
     <!-- ===== 战区二:省日常 ===== -->
@@ -151,7 +154,9 @@ const recentSavings = computed(() => store.savings.slice(0, 8))
           <template v-if="g.prev > 0"> · 上月 {{ fmtCNY(g.prev, true) }}</template>
         </span>
       </div>
-      <div class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg" style="background: var(--plane); color: var(--ink-2)">💡 {{ g.strategy }}</div>
+      <div v-if="!isAdviceHidden('tip:goal:' + g.id)" class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg flex gap-2" style="background: var(--plane); color: var(--ink-2)">
+        <span class="flex-1">💡 {{ g.strategy }}</span>
+        <button class="shrink-0 self-start" style="color: var(--ink-3)" @click="hideAdvice('tip:goal:' + g.id)">✕</button></div>
     </div>
 
     <!-- ===== 战区三:省家人开支 ===== -->
@@ -167,8 +172,9 @@ const recentSavings = computed(() => store.savings.slice(0, 8))
       </div>
       <div v-if="fam.savedMonthly > 0" class="text-[12px] mt-1 font-medium" style="color: var(--c-save)">
         已比基线(4万/月)降了 {{ fmtCNY(fam.savedMonthly, true) }}/月 = 一年 {{ fmtCNY(fam.savedMonthly * 12, true) }}</div>
-      <div class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg" style="background: var(--plane); color: var(--ink-2)">
-        💡 这块不是抠,是坦诚:跟家里说清现在的压力和还债计划,商量一个阶段性的数。哪怕各调2000,一年就是7.2万,等翻身了再补回来。谈好新数告诉我,我改自动转账,这里立刻显示每月省多少</div>
+      <div v-if="!isAdviceHidden('tip:family')" class="text-[12px] mt-2 px-2.5 py-1.5 rounded-lg flex gap-2" style="background: var(--plane); color: var(--ink-2)">
+        <button class="shrink-0 order-2 self-start" style="color: var(--ink-3)" @click="hideAdvice('tip:family')">✕</button>
+        <span class="flex-1">💡 这块不是抠,是坦诚:跟家里说清现在的压力和还债计划,商量一个阶段性的数。哪怕各调2000,一年就是7.2万,等翻身了再补回来。谈好新数告诉我,我改自动转账,这里立刻显示每月省多少</span></div>
     </div>
 
     <!-- 省下账 -->

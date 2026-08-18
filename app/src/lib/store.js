@@ -22,6 +22,7 @@ export const store = reactive({
   saveGoals: [],      // 省钱作战目标
   secDaily: null,     // 最近一次证券行情快照
   holdings: [],       // 证券持仓明细
+  advicePrefs: {},    // 被隐藏的建议 key
 })
 
 export function toCNY(amount, currency) {
@@ -74,7 +75,7 @@ export async function loadAll() {
   try {
     const uid = store.session?.user?.id
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
-    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings] = await Promise.all([
+    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs] = await Promise.all([
       q(supabase.from('accounts').select('*').eq('owner', uid).order('sort').order('created_at'), '账户'),
       q(supabase.from('members').select('*').eq('owner', uid).order('sort').order('created_at'), '成员'),
       q(supabase.from('batches').select('*').eq('owner', uid).order('given_at', { ascending: false }), '批次'),
@@ -88,6 +89,7 @@ export async function loadAll() {
       q(supabase.from('save_goals').select('*').eq('owner', uid).eq('active', true).order('sort'), '省钱目标'),
       q(supabase.from('sec_daily').select('*').eq('owner', uid).order('snap_date', { ascending: false }).limit(1), '行情'),
       q(supabase.from('holdings').select('*').eq('owner', uid).order('value', { ascending: false }), '持仓'),
+      q(supabase.from('advice_prefs').select('*').eq('owner', uid), '建议偏好'),
     ])
     store.accounts = accounts
     store.members = members
@@ -102,6 +104,7 @@ export async function loadAll() {
     store.saveGoals = saveGoals
     store.secDaily = secDaily[0] || null
     store.holdings = holdings
+    store.advicePrefs = Object.fromEntries(advicePrefs.map((r) => [r.key, r]))
     rebuildCashflow()
     store.ready = true
   } catch (e) {
@@ -153,4 +156,15 @@ export async function deleteTx(id) {
   if (error) throw new Error(error.message)
   await loadAll()
   return data
+}
+
+// 建议偏好:点✕隐藏,管家记住口味
+export function isAdviceHidden(key) {
+  return !!store.advicePrefs[key]?.muted
+}
+export async function hideAdvice(key) {
+  const prev = store.advicePrefs[key]
+  const row = { key, hides: (prev?.hides || 0) + 1, muted: true, updated_at: new Date().toISOString() }
+  store.advicePrefs = { ...store.advicePrefs, [key]: row }
+  await supabase.from('advice_prefs').upsert({ ...row, owner: store.session?.user?.id }, { onConflict: 'owner,key' })
 }

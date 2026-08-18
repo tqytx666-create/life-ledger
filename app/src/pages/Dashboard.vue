@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store, netWorthCNY, liquidNetWorthCNY, toCNY } from '../lib/store'
+import { store, netWorthCNY, liquidNetWorthCNY, toCNY, isAdviceHidden, hideAdvice } from '../lib/store'
 import { fmtCNY, fmtMoney, ACCOUNT_TYPES } from '../lib/fmt'
 import { useCountUp } from '../lib/anim'
 import Icon from '../components/Icon.vue'
@@ -281,7 +281,9 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         <div class="h-full rounded-full cat-bar" style="background: linear-gradient(90deg, #1baf7a, #0ca30c)"
           :style="{ transform: barsOn ? `scaleX(${Math.max(wsd.progress, 0.015)})` : 'scaleX(0)' }"></div>
       </div>
-      <div class="text-[11px] mt-1.5" style="color: var(--ink-3)">清零后每月多出 {{ fmtCNY(wsd.monthlyInterest, true) }} 现金流;先歼 12% 的 {{ fmtCNY(wsd.expensive, true) }},4.5% 那 12.5万 不急</div>
+      <div v-if="!isAdviceHidden('tip:wsd:home')" class="text-[11px] mt-1.5 flex gap-2" style="color: var(--ink-3)">
+        <span class="flex-1">清零后每月多出 {{ fmtCNY(wsd.monthlyInterest, true) }} 现金流;先歼 12% 的 {{ fmtCNY(wsd.expensive, true) }},4.5% 那 12.5万 不急</span>
+        <button class="shrink-0" @click="hideAdvice('tip:wsd:home')">✕</button></div>
     </div>
 
     <!-- 未来7天 -->

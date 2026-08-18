@@ -3,7 +3,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
-import { loadAll } from '../lib/store'
+import { loadAll, hideAdvice } from '../lib/store'
 import { fmtCNY, todayStr } from '../lib/fmt'
 
 const router = useRouter()
@@ -50,6 +50,11 @@ async function onPick(e) {
     imgPreview.value = b64
     await ask(b64)
   } catch (ex) { err.value = String(ex) } finally { e.target.value = '' }
+}
+
+async function muteDim(name) {
+  await hideAdvice('askbuy:dim:' + name)
+  if (result.value) result.value.dimensions = result.value.dimensions.filter((d) => d.name !== name)
 }
 
 const VERDICT = {
@@ -111,16 +116,22 @@ function reset() { result.value = null; imgPreview.value = ''; text.value = ''; 
             <div class="text-[13px] truncate" style="color: var(--ink-2)">{{ result.product }}</div>
             <div class="tabular font-bold text-[26px] leading-tight gold-text">{{ fmtCNY(Number(result.price) || 0) }}</div>
           </div>
-          <span class="shrink-0 px-3 py-1.5 rounded-full font-bold text-[15px]"
-            :style="`background: ${VERDICT[result.verdict]?.color}; color: #171106`">
-            {{ VERDICT[result.verdict]?.label || result.verdict }}</span>
+          <div class="shrink-0 text-center">
+            <span class="px-3 py-1.5 rounded-full font-bold text-[15px] block"
+              :style="`background: ${VERDICT[result.verdict]?.color}; color: #171106`">
+              {{ VERDICT[result.verdict]?.label || result.verdict }}</span>
+            <div v-if="result.score != null" class="tabular font-bold text-[18px] mt-1" :style="`color: ${VERDICT[result.verdict]?.color}`">{{ result.score }}分</div>
+          </div>
         </div>
         <div class="text-[15px] font-medium mt-2">{{ result.title }}</div>
+        <div class="text-[10px] mt-0.5" style="color: var(--ink-3)">评分区间:≥70 放心买 · 40-69 缓一缓 · <40 别买 · 点维度旁✕可永久静音该项</div>
 
         <div class="mt-3 space-y-2">
-          <div v-for="d in result.dimensions" :key="d.name" class="flex gap-2 text-[13px]">
+          <div v-for="d in result.dimensions" :key="d.name" class="flex gap-2 text-[13px] group">
             <span :style="d.pass ? 'color: var(--good-text)' : 'color: var(--danger)'">{{ d.pass ? '✓' : '✗' }}</span>
-            <span style="color: var(--ink-2)"><b>{{ d.name }}</b> · {{ d.comment }}</span>
+            <span class="flex-1" style="color: var(--ink-2)"><b>{{ d.name }}</b> · {{ d.comment }}</span>
+            <button class="shrink-0 self-start text-[11px]" style="color: var(--ink-3)" title="以后不看这项"
+              @click="muteDim(d.name)">✕</button>
           </div>
         </div>
 
