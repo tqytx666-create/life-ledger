@@ -76,14 +76,14 @@ function hardRefresh() {
       </router-view>
       <!-- 记账三连 -->
       <div v-if="fabOpen" class="fixed inset-0 z-40 fab-backdrop" @click="fabOpen = false"></div>
-      <div v-if="fabOpen" class="fixed inset-x-0 z-50 flex flex-col items-center gap-3"
+      <div v-if="fabOpen" class="fixed inset-x-0 z-50 flex flex-col items-center gap-4"
         style="bottom: calc(env(safe-area-inset-bottom, 0px) + 6.5rem)">
-        <button v-for="(f, i) in FAB" :key="f.to" class="fab-item flex items-center gap-3 px-5 py-3 rounded-2xl"
-          :style="`animation-delay: ${(FAB.length - 1 - i) * 60}ms; background: var(--surface-1); border: 1px solid rgba(216,178,92,.4); box-shadow: 0 8px 28px rgba(0,0,0,.5)`"
+        <button v-for="(f, i) in FAB" :key="f.to" class="fab-item flex items-center gap-4 px-7 py-4 rounded-2xl w-[82%] max-w-xs"
+          :style="`animation-delay: ${(FAB.length - 1 - i) * 60}ms; background: var(--surface-1); border: 1.5px solid rgba(216,178,92,.5); box-shadow: 0 8px 28px rgba(0,0,0,.5)`"
           @click="goFab(f.to)">
-          <span class="w-9 h-9 rounded-full flex items-center justify-center" style="background: var(--c-net)">
-            <Icon :name="f.icon" :size="18" /></span>
-          <span class="text-[15px] font-medium" style="color: var(--ink-1)">{{ f.label }}</span>
+          <span class="w-13 h-13 rounded-full flex items-center justify-center shrink-0" style="background: var(--c-net)">
+            <Icon :name="f.icon" :size="26" /></span>
+          <span class="text-[19px] font-semibold" style="color: var(--ink-1)">{{ f.label }}</span>
         </button>
       </div>
 
