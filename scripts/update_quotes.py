@@ -30,6 +30,8 @@ def qcode(code):
     return ('hk' + code) if len(code) == 5 else ('sh' + code if code.startswith(('6','9','5')) else 'sz' + code)
 
 codes = {h['code']: qcode(h['code']) for h in quoted}
+if not codes:
+    print('无带代码的持仓,跳过行情抓取'); import sys; sys.exit(0)
 url = 'https://qt.gtimg.cn/q=' + ','.join(codes.values())
 raw = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=20).read().decode('gbk', 'ignore')
 prices = {}
