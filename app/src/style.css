@@ -193,6 +193,33 @@ select option { background: var(--surface-1); color: var(--ink-1); }
 .fab-backdrop { background: rgba(6,6,8,.72); backdrop-filter: blur(6px); }
 .fab-plus { transition: transform .28s cubic-bezier(.2,.9,.3,1.2); }
 .fab-plus.open { transform: rotate(135deg); }
+/* 流水:还款徽章 + 详情抽屉 */
+.repay-badge {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  color: var(--gold);
+  border: 1px solid rgba(216, 178, 92, 0.45);
+  background: rgba(216, 178, 92, 0.08);
+  vertical-align: 2px;
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-up { animation: sheetUp .32s cubic-bezier(.2,.9,.3,1) both; }
+.sheet-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--grid);
+}
+.sheet-row:last-child { border-bottom: none; }
+.sheet-row > span { color: var(--ink-3); flex-shrink: 0; margin-right: 16px; }
+.sheet-row > b { font-weight: 500; word-break: break-all; }
+
 @keyframes scanPulse {
   0%, 100% { box-shadow: 0 6px 24px rgba(216,178,92,.28); }
   50% { box-shadow: 0 6px 34px rgba(216,178,92,.65); }
