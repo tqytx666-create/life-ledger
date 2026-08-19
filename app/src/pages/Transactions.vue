@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { supabase } from '../lib/supabase'
-import { store, deleteTx, loadAll } from '../lib/store'
+import { store, loadAll } from '../lib/store'
 import { fmtMoney, fmtCNY, fmtDate } from '../lib/fmt'
+import { txSign as sign, txColor as color, typeName, isRepay, mergePairs } from '../lib/txkit'
+import TxSheet from '../components/TxSheet.vue'
 
 const filter = ref('all')
 const busyId = ref('')
@@ -77,75 +79,18 @@ const sumShown = computed(() => {
   return t
 })
 
-// 转账两条腿合并成一行(同 transfer_gid);缺腿(跨月/被筛掉)保持单行
-const mergedItems = computed(() => {
-  const byGid = {}
-  for (const t of filtered.value) if (t.transfer_gid) (byGid[t.transfer_gid] ||= []).push(t)
-  const seen = new Set()
-  const items = []
-  for (const t of filtered.value) {
-    if (t.transfer_gid && byGid[t.transfer_gid].length === 2) {
-      if (seen.has(t.transfer_gid)) continue
-      seen.add(t.transfer_gid)
-      const pair = byGid[t.transfer_gid]
-      const out = pair.find((x) => x.type === 'transfer_out') || pair[0]
-      const tin = pair.find((x) => x.type === 'transfer_in') || pair[1]
-      items.push({ pair: true, id: t.transfer_gid, out, tin, t: out, occurred_at: out.occurred_at })
-    } else {
-      items.push({ pair: false, id: t.id, t, occurred_at: t.occurred_at })
-    }
-  }
-  return items
-})
-
-// 按日分组
+// 转账两条腿合并 + 按日分组
 const groups = computed(() => {
   const g = {}
-  for (const it of mergedItems.value) {
+  for (const it of mergePairs(filtered.value)) {
     ;(g[it.occurred_at] ||= []).push(it)
   }
   return Object.entries(g).sort((a, b) => b[0].localeCompare(a[0]))
 })
 
-// 还款类识别:还xx贷/月供/利息/信用卡还款 → 金色标出
-function isRepay(t) {
-  return /还|贷|月供|利息/.test(t.category || '')
-}
-
-function sign(t) {
-  if (t.type === 'income' || t.type === 'transfer_in') return '+'
-  if (t.type === 'adjust') return t.category === '-' ? '-' : '+'
-  return '-'
-}
-function color(t) {
-  const s = sign(t)
-  if (t.type.startsWith('transfer')) return 'var(--ink-2)'
-  if (t.type === 'expense' && isRepay(t)) return 'var(--gold)'
-  return s === '+' ? 'var(--c-in)' : 'var(--ink-1)'
-}
-function typeName(t) {
-  return { income: '', expense: '', transfer_out: '转出', transfer_in: '转入', adjust: '校准' }[t.type] || ''
-}
-
 // 详情抽屉
 const detail = ref(null)
 function openDetail(it) { detail.value = it }
-const detailTx = computed(() => detail.value?.t)
-
-async function del(t) {
-  const label = `${t.category} ${fmtMoney(t.amount, accMap.value[t.account_id]?.currency)}`
-  if (!confirm(`删掉这笔?余额会同步回滚\n${label}`)) return
-  busyId.value = t.id
-  err.value = ''
-  try {
-    await deleteTx(t.id)
-    detail.value = null
-  } catch (e) {
-    err.value = e.message
-  } finally {
-    busyId.value = ''
-  }
-}
 
 // 省钱记录:按日分组 + 删除(不涉及余额)
 const saveGroups = computed(() => {
@@ -271,46 +216,6 @@ async function delSave(s) {
     </div>
 
     <!-- 流水详情抽屉 -->
-    <teleport to="body">
-      <div v-if="detail" class="fixed inset-0 z-50 fab-backdrop" @click="detail = null"></div>
-      <div v-if="detail" class="fixed inset-x-0 bottom-0 z-50 sheet-up rounded-t-3xl px-6 pt-5"
-        style="background: var(--surface-1); border-top: 1px solid var(--hairline); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem)">
-        <div class="w-10 h-1 rounded-full mx-auto mb-5" style="background: var(--baseline)"></div>
-        <div class="text-center mb-5">
-          <div class="text-sm mb-1" style="color: var(--ink-3)">
-            {{ detail.pair ? (isRepay(detail.out) ? '还款转账' : '内部转账') : ({ income: '收入', expense: isRepay(detailTx) ? '还款支出' : '支出', adjust: '余额校准', transfer_out: '转出', transfer_in: '转入' }[detailTx.type] || detailTx.type) }}
-            · {{ detail.pair ? detail.out.category : detailTx.category }}
-          </div>
-          <div class="text-[32px] font-bold tabular"
-            :style="{ color: detail.pair ? (isRepay(detail.out) ? 'var(--gold)' : 'var(--ink-1)') : color(detailTx) }">
-            {{ detail.pair ? '' : sign(detailTx) }}{{ fmtMoney((detail.pair ? detail.out : detailTx).amount, accMap[(detail.pair ? detail.out : detailTx).account_id]?.currency) }}
-          </div>
-        </div>
-        <div class="text-[14px]">
-          <div v-if="detail.pair" class="sheet-row">
-            <span>资金流向</span><b class="text-right">{{ accMap[detail.out.account_id]?.name }} → {{ accMap[detail.tin.account_id]?.name }}</b>
-          </div>
-          <div v-else class="sheet-row">
-            <span>账户</span><b>{{ accMap[detailTx.account_id]?.name }}</b>
-          </div>
-          <div class="sheet-row"><span>日期</span><b>{{ fmtDate((detail.pair ? detail.out : detailTx).occurred_at) }}</b></div>
-          <div v-if="(detail.pair ? detail.out : detailTx).note" class="sheet-row">
-            <span>备注</span><b class="text-right" style="max-width: 70%">{{ (detail.pair ? detail.out : detailTx).note }}</b>
-          </div>
-          <div v-if="(detail.pair ? detail.out : detailTx).import_id" class="sheet-row">
-            <span>凭证号</span><b class="text-xs" style="color: var(--ink-3)">{{ (detail.pair ? detail.out : detailTx).import_id }}</b>
-          </div>
-          <div v-if="(detail.pair ? detail.out : detailTx).verified === false" class="sheet-row">
-            <span>AI 记账</span><b style="color: var(--gold)">今晚管家复核</b>
-          </div>
-        </div>
-        <button class="w-full mt-5 py-3 rounded-xl text-[15px] disabled:opacity-40"
-          style="border: 1px solid rgba(224,86,77,.45); color: var(--danger)"
-          :disabled="busyId === (detail.pair ? detail.out : detailTx).id"
-          @click="del(detail.pair ? detail.out : detailTx)">
-          {{ busyId === (detail.pair ? detail.out : detailTx).id ? '删除中…' : (detail.pair ? '删除这笔转账(两腿一起删,余额回滚)' : '删除这笔(余额回滚)') }}
-        </button>
-      </div>
-    </teleport>
+    <TxSheet v-if="detail" :item="detail" :accMap="accMap" @close="detail = null" />
   </div>
 </template>

@@ -237,14 +237,14 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
 
     <!-- 本月四格 -->
     <div class="grid grid-cols-2 gap-2.5 mb-4 rise" style="--d:1">
-      <div class="card p-3">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-in)"></i>本月收入</div>
+      <button class="card p-3 text-left active:opacity-70" @click="router.push('/flow/income')">
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-in)"></i>本月收入 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]">{{ fmtCNY(incomeAnim, true) }}</div>
-      </div>
-      <div class="card p-3">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-out)"></i>本月支出</div>
+      </button>
+      <button class="card p-3 text-left active:opacity-70" @click="router.push('/flow/expense')">
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-out)"></i>本月支出 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]">{{ fmtCNY(expenseAnim, true) }}</div>
-      </div>
+      </button>
       <div class="card p-3" style="border-color: rgba(216,178,92,.32)">
         <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-net)"></i>本月净结余 · 要越来越大</div>
         <div class="tabular font-bold mt-1 text-[17px]" :style="mNet >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
