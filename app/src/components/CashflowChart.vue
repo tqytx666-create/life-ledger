@@ -9,10 +9,17 @@ const props = defineProps({
 })
 const emit = defineEmits(['detail'])
 
-const W = 340, H = 170, PAD = { l: 8, r: 8, t: 26, b: 22 }
+// 超过6个月:画布按月加宽,容器横向拖动(默认停在最新月)
+const H = 170, PAD = { l: 8, r: 8, t: 26, b: 22 }
+const W = computed(() => Math.max(340, props.cashflow.length * 54))
+const scrollable = computed(() => props.cashflow.length > 6)
+const scroller = ref(null)
 const picked = ref(-1)
 const on = ref(false)
-onMounted(() => setTimeout(() => { on.value = true }, 250))
+onMounted(() => setTimeout(() => {
+  on.value = true
+  if (scroller.value) scroller.value.scrollLeft = scroller.value.scrollWidth
+}, 250))
 
 const scale = computed(() => {
   const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense]), props.baseline)
@@ -33,7 +40,7 @@ const avgY = computed(() => H - PAD.b - avgExpense.value * scale.value)
 const groups = computed(() => {
   const n = props.cashflow.length
   if (!n) return []
-  const iw = (W - PAD.l - PAD.r) / n
+  const iw = (W.value - PAD.l - PAD.r) / n
   const bw = Math.min(24, iw * 0.28)
   return props.cashflow.map((m, i) => {
     const cx = PAD.l + iw * i + iw / 2
@@ -67,7 +74,9 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
     <div v-if="!groups.length" class="h-[150px] flex items-center justify-center text-sm" style="color: var(--ink-3)">
       本月开始记账,下月就能看对比
     </div>
-    <svg v-else :viewBox="`0 0 ${W} ${H}`" class="w-full" :class="{ 'bars-on': on }">
+    <div v-else ref="scroller" :class="scrollable ? 'overflow-x-auto' : ''" style="-webkit-overflow-scrolling: touch">
+    <svg :viewBox="`0 0 ${W} ${H}`" :class="{ 'bars-on': on }"
+      :style="scrollable ? { width: W * 1.6 + 'px', maxWidth: 'none' } : { width: '100%' }">
       <line :x1="PAD.l" :x2="W - PAD.r" :y1="H - PAD.b" :y2="H - PAD.b" stroke="var(--baseline)" stroke-width="1" />
       <g v-for="(g, i) in groups" :key="g.m.month" @click="picked = picked === i ? -1 : i" class="cursor-pointer">
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />
@@ -94,5 +103,7 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
         <text x="148" y="16" font-size="10" text-anchor="end" fill="var(--gold)">详情›</text>
       </g>
     </svg>
+    </div>
+    <div v-if="scrollable" class="text-[10px] text-right mt-0.5" style="color: var(--ink-3)">← 左右拖动看历史月份</div>
   </div>
 </template>

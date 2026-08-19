@@ -27,9 +27,9 @@ const monthOptions = computed(() => {
   return opts
 })
 
-// recentTx 只覆盖近半年,更早的月份(含上月对比)按需拉
+// recentTx 覆盖近13个月,更早的月份(含上月对比)按需拉
 const coveredFrom = computed(() => {
-  const d = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const d = new Date(now.getFullYear(), now.getMonth() - 12, 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 })
 const catFilter = ref('')

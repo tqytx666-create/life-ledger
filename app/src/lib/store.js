@@ -75,6 +75,7 @@ export async function loadAll() {
   try {
     const uid = store.session?.user?.id
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
+    const txWindow = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10)  // 流水拉13个月,支撑收支图回看
     const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs] = await Promise.all([
       q(supabase.from('accounts').select('*').eq('owner', uid).order('sort').order('created_at'), '账户'),
       q(supabase.from('members').select('*').eq('owner', uid).order('sort').order('created_at'), '成员'),
@@ -84,7 +85,7 @@ export async function loadAll() {
       q(supabase.from('recurring').select('*').eq('owner', uid).order('created_at'), '固定支出'),
       q(supabase.from('fx_rates').select('*'), '汇率'),
       q(supabase.from('net_worth_snapshots').select('*').eq('owner', uid).gte('snap_date', sixMonthsAgo).order('snap_date'), '快照'),
-      q(supabase.from('transactions').select('*').eq('owner', uid).gte('occurred_at', sixMonthsAgo).order('occurred_at', { ascending: false }).order('created_at', { ascending: false }).limit(1000), '流水'),
+      q(supabase.from('transactions').select('*').eq('owner', uid).gte('occurred_at', txWindow).order('occurred_at', { ascending: false }).order('created_at', { ascending: false }).limit(4000), '流水'),
       q(supabase.from('savings').select('*').eq('owner', uid).gte('saved_at', sixMonthsAgo).order('saved_at', { ascending: false }).limit(1000), '省钱'),
       q(supabase.from('save_goals').select('*').eq('owner', uid).eq('active', true).order('sort'), '省钱目标'),
       q(supabase.from('sec_daily').select('*').eq('owner', uid).order('snap_date', { ascending: false }).limit(1), '行情'),
@@ -124,7 +125,7 @@ function rebuildCashflow() {
     const cur = acc[t.account_id]?.currency || 'CNY'
     byMonth[m][t.type === 'income' ? 'income' : 'expense'] += toCNY(t.amount, cur)
   }
-  store.cashflow = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)).slice(-6)
+  store.cashflow = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)).slice(-13)
 }
 
 // 登录后开机例程:结算到期月供/固定支出 → 若有入账则整体重拉
