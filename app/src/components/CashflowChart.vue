@@ -7,6 +7,7 @@ const props = defineProps({
   cashflow: { type: Array, default: () => [] },
   baseline: { type: Number, default: 0 },      // 全口径月支出基准(固定盘+生活预算),不传则用历史均值
 })
+const emit = defineEmits(['detail'])
 
 const W = 340, H = 170, PAD = { l: 8, r: 8, t: 26, b: 22 }
 const picked = ref(-1)
@@ -84,11 +85,13 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
         <line :x1="PAD.l" :x2="W - PAD.r" :y1="avgY" :y2="avgY" stroke="var(--gold)" stroke-width="1" stroke-dasharray="5 4" opacity="0.85" />
         <text :x="W - PAD.r" :y="avgY - 4" font-size="9" text-anchor="end" fill="var(--gold)">月支出基准 {{ fmtCNY(avgExpense, true) }}</text>
       </template>
-      <g v-if="pickedG" :transform="`translate(${Math.min(Math.max(pickedG.cx - 62, 2), W - 126)}, 0)`">
-        <rect width="124" height="24" rx="6" fill="var(--surface-1)" stroke="var(--hairline)" />
-        <text x="62" y="16" font-size="10" text-anchor="middle" fill="var(--ink-1)">
+      <g v-if="pickedG" :transform="`translate(${Math.min(Math.max(pickedG.cx - 78, 2), W - 158)}, 0)`"
+        class="cursor-pointer" @click.stop="emit('detail', pickedG.m.month)">
+        <rect width="156" height="24" rx="6" fill="var(--surface-1)" stroke="var(--hairline)" />
+        <text x="66" y="16" font-size="10" text-anchor="middle" fill="var(--ink-1)">
           收 {{ fmtCNY(pickedG.m.income, true) }} · 支 {{ fmtCNY(pickedG.m.expense, true) }}
         </text>
+        <text x="148" y="16" font-size="10" text-anchor="end" fill="var(--gold)">详情›</text>
       </g>
     </svg>
   </div>

@@ -331,7 +331,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
       <div class="text-[11px] mb-2" style="color: var(--ink-3)">
         基准线 = 固定盘 {{ fmtCNY(baselineFixed, true) }}(房租+给家人+全部月供) + 生活预算 3万;目标:绿柱压到线下
       </div>
-      <CashflowChart :cashflow="store.cashflow" :baseline="baseline" />
+      <CashflowChart :cashflow="store.cashflow" :baseline="baseline" @detail="(m) => router.push(`/flow/expense?m=${m}`)" />
     </div>
 
     <!-- 资产分组 -->

@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { supabase } from '../lib/supabase'
 import { store, toCNY } from '../lib/store'
 import { fmtMoney, fmtCNY, fmtDate } from '../lib/fmt'
 import { txSign as sign, txColor as color, isRepay } from '../lib/txkit'
@@ -9,24 +10,57 @@ import TxSheet from '../components/TxSheet.vue'
 const route = useRoute()
 const router = useRouter()
 
-const kind = computed(() => (route.params.kind === 'income' ? 'income' : 'expense'))
-const title = computed(() => (kind.value === 'income' ? '本月收入' : '本月支出'))
+const kind = ref(route.params.kind === 'income' ? 'income' : 'expense')
+const title = computed(() => (kind.value === 'income' ? '收入' : '支出'))
 
 const now = new Date()
 const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-const monthSel = ref(thisMonth)
+const monthSel = ref(/^\d{4}-\d{2}$/.test(route.query.m || '') ? route.query.m : thisMonth)
 
-// 近半年内出现过流水的月份
+// 可选月份:近18个月(老月份按需单独拉取)
 const monthOptions = computed(() => {
-  const s = new Set([thisMonth])
-  for (const t of store.recentTx) s.add(String(t.occurred_at).slice(0, 7))
-  return [...s].sort().reverse()
+  const opts = []
+  for (let i = 0; i < 18; i++) {
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    opts.push(`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return opts
 })
+
+// recentTx 只覆盖近半年,更早的月份(含上月对比)按需拉
+const coveredFrom = computed(() => {
+  const d = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+})
+const catFilter = ref('')
+const prevMonth = computed(() => {
+  const [y, m] = monthSel.value.split('-').map(Number)
+  return `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}`
+})
+
+const extTx = ref([])
+const extLoading = ref(false)
+watch([monthSel, kind], async () => {
+  catFilter.value = ''
+  if (prevMonth.value > coveredFrom.value) { extTx.value = []; return }
+  extLoading.value = true
+  try {
+    const [y, mo] = prevMonth.value.split('-').map(Number)
+    const [y2, mo2] = monthSel.value.split('-').map(Number)
+    const to = `${mo2 === 12 ? y2 + 1 : y2}-${String(mo2 === 12 ? 1 : mo2 + 1).padStart(2, '0')}-01`
+    const { data, error } = await supabase.from('transactions').select('*')
+      .gte('occurred_at', `${y}-${String(mo).padStart(2, '0')}-01`).lt('occurred_at', to)
+      .order('occurred_at', { ascending: false }).limit(2000)
+    if (error) throw error
+    extTx.value = data || []
+  } catch (e) { console.warn(e.message) } finally { extLoading.value = false }
+}, { immediate: true })
 
 const accMap = computed(() => Object.fromEntries(store.accounts.map((a) => [a.id, a])))
 
 function monthList(month) {
-  return store.recentTx.filter((t) => t.type === kind.value && t.occurred_at.startsWith(month))
+  const src = month > coveredFrom.value ? store.recentTx : extTx.value
+  return src.filter((t) => t.type === kind.value && t.occurred_at.startsWith(month))
 }
 const list = computed(() => monthList(monthSel.value))
 const cny = (t) => toCNY(Number(t.amount), accMap.value[t.account_id]?.currency || 'CNY')
@@ -34,10 +68,6 @@ const cny = (t) => toCNY(Number(t.amount), accMap.value[t.account_id]?.currency 
 const total = computed(() => list.value.reduce((s, t) => s + cny(t), 0))
 
 // 对比上月同口径
-const prevMonth = computed(() => {
-  const [y, m] = monthSel.value.split('-').map(Number)
-  return `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}`
-})
 const prevTotal = computed(() => monthList(prevMonth.value).reduce((s, t) => s + cny(t), 0))
 
 // 日均(当月按已过天数)
@@ -64,7 +94,6 @@ const catRows = computed(() => {
 })
 
 // 点分类过滤下方明细
-const catFilter = ref('')
 function toggleCat(c) { catFilter.value = catFilter.value === c ? '' : c }
 
 const groups = computed(() => {
@@ -84,9 +113,18 @@ onMounted(() => setTimeout(() => { barsOn.value = true }, 250))
   <div class="max-w-md mx-auto px-4 pt-6">
     <div class="flex items-center gap-3 mb-4">
       <h1 class="text-xl font-bold flex-1"><button class="mr-1" @click="router.back()">‹</button> {{ title }}分析</h1>
-      <select v-model="monthSel" class="card px-2.5 py-1.5 text-[13px] outline-none" @change="catFilter = ''">
+      <select v-model="monthSel" class="card px-2.5 py-1.5 text-[13px] outline-none">
         <option v-for="m in monthOptions" :key="m" :value="m">{{ m.replace('-', '年') }}月</option>
       </select>
+    </div>
+
+    <!-- 支出/收入切换 -->
+    <div class="flex gap-2 mb-3">
+      <button v-for="k in [['expense', '支出'], ['income', '收入']]" :key="k[0]"
+        class="px-3.5 py-1.5 rounded-full text-[13px] border"
+        :style="kind === k[0] ? 'background: var(--c-net); color:#fff; border-color:transparent' : 'border-color: var(--hairline); color: var(--ink-2)'"
+        @click="kind = k[0]">{{ k[1] }}</button>
+      <span v-if="extLoading" class="text-xs self-center" style="color: var(--ink-3)">拉取历史月份…</span>
     </div>
 
     <!-- 总额卡 -->
