@@ -17,6 +17,7 @@ export const store = reactive({
   fx: { CNY: 1, HKD: 0.92, USD: 7.12 },
   snapshots: [],      // 净资产走势
   recentTx: [],       // 最近流水(展示)
+  inboxPending: 0,    // 收件箱待处理数(底栏角标)
   cashflow: [],       // [{month, income, expense}] 折CNY
   savings: [],        // 省钱记录
   saveGoals: [],      // 省钱作战目标

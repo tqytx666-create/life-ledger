@@ -306,7 +306,7 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <div v-if="catBars.length" class="card p-4 mb-4 rise" style="--d:4">
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-medium" style="color: var(--ink-2)">本月花在哪</div>
-        <button class="text-sm" style="color: var(--c-save)" @click="router.push('/save')">省钱作战 ›</button>
+        <button class="text-sm" style="color: var(--gold)" @click="router.push('/flow/expense')">看明细 ›</button>
       </div>
       <div class="space-y-2.5">
         <div v-for="(b, i) in catBars" :key="b.cat">

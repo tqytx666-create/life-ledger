@@ -62,6 +62,7 @@ async function load() {
     .eq('status', 'pending').order('created_at', { ascending: false })
   if (error) { err.value = error.message; return }
   items.value = data || []
+  store.inboxPending = items.value.length
   const { count } = await supabase.from('inbox_items').select('*', { count: 'exact', head: true }).eq('status', 'done')
   doneCount.value = count || 0
   for (const it of items.value) {
