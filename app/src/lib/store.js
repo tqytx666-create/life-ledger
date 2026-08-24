@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { supabase } from './supabase'
+import { isDebtExpense } from './txkit'
 
 // 全局状态:登录后 loadAll 一次拉齐,写操作走 RPC 后局部刷新
 export const store = reactive({
@@ -122,9 +123,11 @@ function rebuildCashflow() {
   for (const t of store.recentTx) {
     if (t.type !== 'income' && t.type !== 'expense') continue // 转账/校准不算收支
     const m = String(t.occurred_at).slice(0, 7)
-    byMonth[m] ||= { month: m, income: 0, expense: 0 }
-    const cur = acc[t.account_id]?.currency || 'CNY'
-    byMonth[m][t.type === 'income' ? 'income' : 'expense'] += toCNY(t.amount, cur)
+    byMonth[m] ||= { month: m, income: 0, expense: 0, debt: 0 }
+    const v = toCNY(t.amount, acc[t.account_id]?.currency || 'CNY')
+    if (t.type === 'income') byMonth[m].income += v
+    else if (isDebtExpense(t)) byMonth[m].debt += v   // 还贷利息另计,不混进日常支出
+    else byMonth[m].expense += v
   }
   store.cashflow = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)).slice(-13)
 }

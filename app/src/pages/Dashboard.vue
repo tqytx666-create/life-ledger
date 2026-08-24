@@ -2,6 +2,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { store, netWorthCNY, liquidNetWorthCNY, toCNY, isAdviceHidden, hideAdvice } from '../lib/store'
+import { isDebtExpense } from '../lib/txkit'
 import { fmtCNY, fmtMoney, ACCOUNT_TYPES } from '../lib/fmt'
 import { useCountUp } from '../lib/anim'
 import Icon from '../components/Icon.vue'
@@ -53,14 +54,16 @@ const cashAnim = useCountUp(cashWallet)
 const stockAnim = useCountUp(stockTotal)
 
 // ===== 本月四格:收入/支出/净结余/省下 =====
-function monthSum(type, month) {
+function monthSum(type, month, opt = {}) {
   const acc = Object.fromEntries(store.accounts.map((a) => [a.id, a]))
   return store.recentTx
     .filter((t) => t.type === type && t.occurred_at.startsWith(month))
+    .filter((t) => (opt.debt === true ? isDebtExpense(t) : opt.debt === false ? !isDebtExpense(t) : true))
     .reduce((s, t) => s + toCNY(t.amount, acc[t.account_id]?.currency || 'CNY'), 0)
 }
 const mIncome = computed(() => monthSum('income', thisMonth))
-const mExpense = computed(() => monthSum('expense', thisMonth))
+const mExpense = computed(() => monthSum('expense', thisMonth, { debt: false }))  // 日常口径,还贷另计
+const mDebt = computed(() => monthSum('expense', thisMonth, { debt: true }))
 const mNet = computed(() => mIncome.value - mExpense.value)
 const mSaved = computed(() => store.savings.filter((s) => s.saved_at.startsWith(thisMonth)).reduce((t, s) => t + Number(s.amount), 0))
 const incomeAnim = useCountUp(mIncome)
@@ -105,6 +108,7 @@ const catBars = computed(() => {
   const m = {}
   for (const t of store.recentTx) {
     if (t.type !== 'expense' || !t.occurred_at.startsWith(thisMonth)) continue
+    if (isDebtExpense(t)) continue  // 还贷不算"花在哪"
     m[t.category] = (m[t.category] || 0) + toCNY(t.amount, acc[t.account_id]?.currency || 'CNY')
   }
   const arr = Object.entries(m).sort((a, b) => b[1] - a[1])
@@ -242,11 +246,12 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         <div class="tabular font-semibold mt-1 text-[17px]">{{ fmtCNY(incomeAnim, true) }}</div>
       </button>
       <button class="card p-3 text-left active:opacity-70" @click="router.push('/flow/expense')">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-out)"></i>本月支出 ›</div>
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-out)"></i>本月开支 ›</div>
         <div class="tabular font-semibold mt-1 text-[17px]">{{ fmtCNY(expenseAnim, true) }}</div>
+        <div v-if="mDebt > 0" class="text-[10px] mt-0.5 tabular" style="color: var(--gold-dim, #8a6f35)">还贷另计 {{ fmtCNY(mDebt, true) }}</div>
       </button>
       <div class="card p-3" style="border-color: rgba(216,178,92,.32)">
-        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-net)"></i>本月净结余 · 要越来越大</div>
+        <div class="text-[11px] flex items-center gap-1.5" style="color: var(--ink-3)"><i class="w-1.5 h-1.5 rounded-full" style="background: var(--c-net)"></i>本月净结余(不含还贷) · 要越来越大</div>
         <div class="tabular font-bold mt-1 text-[17px]" :style="mNet >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
           {{ mNet >= 0 ? '+' : '' }}{{ fmtCNY(netMAnim, true) }}</div>
       </div>

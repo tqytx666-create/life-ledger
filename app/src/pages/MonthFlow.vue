@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { store, toCNY } from '../lib/store'
 import { fmtMoney, fmtCNY, fmtDate } from '../lib/fmt'
-import { txSign as sign, txColor as color, isRepay } from '../lib/txkit'
+import { txSign as sign, txColor as color, isRepay, isDebtExpense } from '../lib/txkit'
 import TxSheet from '../components/TxSheet.vue'
 
 const route = useRoute()
@@ -58,9 +58,13 @@ watch([monthSel, kind], async () => {
 
 const accMap = computed(() => Object.fromEntries(store.accounts.map((a) => [a.id, a])))
 
+const scope = ref('daily')  // daily=日常 | debt=还贷 | all=全部(仅支出侧有意义)
 function monthList(month) {
   const src = month > coveredFrom.value ? store.recentTx : extTx.value
-  return src.filter((t) => t.type === kind.value && t.occurred_at.startsWith(month))
+  let l = src.filter((t) => t.type === kind.value && t.occurred_at.startsWith(month))
+  if (kind.value === 'expense' && scope.value === 'daily') l = l.filter((t) => !isDebtExpense(t))
+  else if (kind.value === 'expense' && scope.value === 'debt') l = l.filter((t) => isDebtExpense(t))
+  return l
 }
 const list = computed(() => monthList(monthSel.value))
 const cny = (t) => toCNY(Number(t.amount), accMap.value[t.account_id]?.currency || 'CNY')
@@ -118,19 +122,26 @@ onMounted(() => setTimeout(() => { barsOn.value = true }, 250))
       </select>
     </div>
 
-    <!-- 支出/收入切换 -->
-    <div class="flex gap-2 mb-3">
+    <!-- 支出/收入切换 + 还贷口径 -->
+    <div class="flex gap-2 mb-3 flex-wrap">
       <button v-for="k in [['expense', '支出'], ['income', '收入']]" :key="k[0]"
         class="px-3.5 py-1.5 rounded-full text-[13px] border"
         :style="kind === k[0] ? 'background: var(--c-net); color:#fff; border-color:transparent' : 'border-color: var(--hairline); color: var(--ink-2)'"
         @click="kind = k[0]">{{ k[1] }}</button>
+      <template v-if="kind === 'expense'">
+        <span class="w-px self-stretch my-1" style="background: var(--hairline)"></span>
+        <button v-for="s in [['daily', '日常'], ['debt', '还贷'], ['all', '全部']]" :key="s[0]"
+          class="px-3 py-1.5 rounded-full text-[12px] border"
+          :style="scope === s[0] ? 'border-color: var(--gold); color: var(--gold)' : 'border-color: var(--hairline); color: var(--ink-3)'"
+          @click="scope = s[0]; catFilter = ''">{{ s[1] }}</button>
+      </template>
       <span v-if="extLoading" class="text-xs self-center" style="color: var(--ink-3)">拉取历史月份…</span>
     </div>
 
     <!-- 总额卡 -->
     <div class="hero-card p-5 mb-4 rise" style="--d:0">
       <div class="hero-inner"></div><div class="hero-sheen"></div>
-      <div class="text-xs" style="color: var(--ink-3)">{{ monthSel.replace('-', '年') }}月{{ kind === 'income' ? '总收入' : '总支出' }} · {{ list.length }}笔</div>
+      <div class="text-xs" style="color: var(--ink-3)">{{ monthSel.replace('-', '年') }}月{{ kind === 'income' ? '总收入' : { daily: '日常开支', debt: '还贷支出', all: '总支出(含还贷)' }[scope] }} · {{ list.length }}笔</div>
       <div class="tabular font-bold text-[34px] mt-1 gold-text">{{ fmtCNY(total, true) }}</div>
       <div class="flex gap-5 mt-2 text-[12px]" style="color: var(--ink-2)">
         <span>日均 <b class="tabular">{{ fmtCNY(dailyAvg, true) }}</b></span>

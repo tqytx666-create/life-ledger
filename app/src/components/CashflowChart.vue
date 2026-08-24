@@ -22,7 +22,7 @@ onMounted(() => setTimeout(() => {
 }, 250))
 
 const scale = computed(() => {
-  const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense]), props.baseline)
+  const max = Math.max(1, ...props.cashflow.flatMap((m) => [m.income, m.expense + (m.debt || 0)]), props.baseline)
   return (H - PAD.t - PAD.b) / (max * 1.08)
 })
 
@@ -45,10 +45,13 @@ const groups = computed(() => {
   return props.cashflow.map((m, i) => {
     const cx = PAD.l + iw * i + iw / 2
     const hIn = m.income * scale.value, hOut = m.expense * scale.value
+    const hDebt = (m.debt || 0) * scale.value
     return {
       m, cx,
       in: { x: cx - bw - 1, w: bw, y: H - PAD.b - hIn, h: hIn },       // 柱间 2px surface gap
       out: { x: cx + 1, w: bw, y: H - PAD.b - hOut, h: hOut },
+      // 还贷段:叠在日常支出柱上方,哑金色,一眼与消费区分
+      debt: { x: cx + 1, w: bw, y: H - PAD.b - hOut - hDebt, h: hDebt },
       label: Number(m.month.slice(5)) + '月',
     }
   })
@@ -68,7 +71,8 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
   <div class="select-none">
     <div class="flex items-center gap-4 text-xs mb-1" style="color: var(--ink-2)">
       <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--c-in)"></i>收入</span>
-      <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--c-out)"></i>支出</span>
+      <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm inline-block" style="background: var(--c-out)"></i>日常开支</span>
+      <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm inline-block" style="background: #8a6f35; opacity:.75"></i>还贷</span>
       <span class="ml-auto" style="color: var(--ink-3)">折合人民币</span>
     </div>
     <div v-if="!groups.length" class="h-[150px] flex items-center justify-center text-sm" style="color: var(--ink-3)">
@@ -82,6 +86,8 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
         <rect :x="g.cx - 30" y="0" width="60" :height="H" fill="transparent" />
         <path class="grow-bar" :style="{ transitionDelay: (i * 80) + 'ms' }" :d="barPath(g.in)" fill="var(--c-in)" />
         <path class="grow-bar" :style="{ transitionDelay: (i * 80 + 40) + 'ms' }" :d="barPath(g.out)" fill="var(--c-out)" />
+        <rect v-if="g.debt.h > 0.5" class="grow-bar" :style="{ transitionDelay: (i * 80 + 60) + 'ms' }"
+          :x="g.debt.x" :y="g.debt.y" :width="g.debt.w" :height="g.debt.h" rx="2" fill="#8a6f35" opacity="0.75" />
         <text :x="g.cx" :y="H - 8" font-size="10" text-anchor="middle" fill="var(--ink-3)">{{ g.label }}</text>
         <!-- 末月直接标注(浅色绿柱对比不足的补救) -->
         <template v-if="i === groups.length - 1 && picked < 0">
@@ -97,8 +103,8 @@ const pickedG = computed(() => (picked.value >= 0 ? groups.value[picked.value] :
       <g v-if="pickedG" :transform="`translate(${Math.min(Math.max(pickedG.cx - 78, 2), W - 158)}, 0)`"
         class="cursor-pointer" @click.stop="emit('detail', pickedG.m.month)">
         <rect width="156" height="24" rx="6" fill="var(--surface-1)" stroke="var(--hairline)" />
-        <text x="66" y="16" font-size="10" text-anchor="middle" fill="var(--ink-1)">
-          收 {{ fmtCNY(pickedG.m.income, true) }} · 支 {{ fmtCNY(pickedG.m.expense, true) }}
+        <text x="66" y="16" font-size="9.5" text-anchor="middle" fill="var(--ink-1)">
+          收{{ fmtCNY(pickedG.m.income, true) }} 支{{ fmtCNY(pickedG.m.expense, true) }}<template v-if="pickedG.m.debt > 0"> 贷{{ fmtCNY(pickedG.m.debt, true) }}</template>
         </text>
         <text x="148" y="16" font-size="10" text-anchor="end" fill="var(--gold)">详情›</text>
       </g>

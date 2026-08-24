@@ -9,6 +9,12 @@ export function isRepay(t) {
   return /还|贷|月供|利息/.test(t.category || '')
 }
 
+// 还贷口径:这些支出是"还债的钱",不算日常消费(本金是负债转移,利息是财务费用)
+export const DEBT_CATS = ['房贷月供', '车贷', '提前还款', '利息', '还网商贷', '还款']
+export function isDebtExpense(t) {
+  return t.type === 'expense' && DEBT_CATS.includes(t.category)
+}
+
 export function txColor(t) {
   const s = txSign(t)
   if (t.type.startsWith('transfer')) return 'var(--ink-2)'
