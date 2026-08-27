@@ -25,6 +25,7 @@ export const store = reactive({
   secDaily: null,     // 最近一次证券行情快照
   holdings: [],       // 证券持仓明细
   advicePrefs: {},    // 被隐藏的建议 key
+  items: [],          // 物品间
 })
 
 export function toCNY(amount, currency) {
@@ -49,7 +50,7 @@ export function netWorthCNY() {
 export function liquidNetWorthCNY() {
   let t = 0
   for (const a of store.accounts) {
-    if (a.archived || a.type === 'property' || a.type === 'vehicle') continue
+    if (a.archived || a.type === 'property' || a.type === 'vehicle' || a.type === 'goods') continue
     t += (a.type === 'loan' ? -1 : 1) * toCNY(a.balance, a.currency)
   }
   for (const l of store.loans) {
@@ -78,7 +79,7 @@ export async function loadAll() {
     const uid = store.session?.user?.id
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
     const txWindow = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10)  // 流水拉13个月,支撑收支图回看
-    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs] = await Promise.all([
+    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs, items] = await Promise.all([
       q(supabase.from('accounts').select('*').eq('owner', uid).order('sort').order('created_at'), '账户'),
       q(supabase.from('members').select('*').eq('owner', uid).order('sort').order('created_at'), '成员'),
       q(supabase.from('batches').select('*').eq('owner', uid).order('given_at', { ascending: false }), '批次'),
@@ -93,6 +94,7 @@ export async function loadAll() {
       q(supabase.from('sec_daily').select('*').eq('owner', uid).order('snap_date', { ascending: false }).limit(1), '行情'),
       q(supabase.from('holdings').select('*').eq('owner', uid).order('value', { ascending: false }), '持仓'),
       q(supabase.from('advice_prefs').select('*').eq('owner', uid), '建议偏好'),
+      q(supabase.from('items').select('*').eq('owner', uid).order('bought_at', { ascending: false }).limit(500), '物品'),
     ])
     store.accounts = accounts
     store.members = members
@@ -108,6 +110,7 @@ export async function loadAll() {
     store.secDaily = secDaily[0] || null
     store.holdings = holdings
     store.advicePrefs = Object.fromEntries(advicePrefs.map((r) => [r.key, r]))
+    store.items = items
     rebuildCashflow()
     store.ready = true
   } catch (e) {

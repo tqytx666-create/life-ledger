@@ -12,7 +12,7 @@ import CashflowChart from '../components/CashflowChart.vue'
 const router = useRouter()
 const thisMonth = new Date().toISOString().slice(0, 7)
 
-const isSunkAcc = (a) => a.type === 'property' || a.type === 'vehicle'
+const isSunkAcc = (a) => a.type === 'property' || a.type === 'vehicle' || a.type === 'goods'
 
 // ===== 英雄区:可动净资产(不含房车) =====
 const liquid = computed(() => liquidNetWorthCNY())
@@ -94,6 +94,13 @@ const upcoming = computed(() => {
   for (const l of store.loans) {
     if (l.archived || !(Number(l.principal_remaining) > 0)) continue
     events.push({ day: l.payment_day, label: l.name.replace(/\(.*?\)/g, ''), amount: Number(l.monthly_payment), kind: 'loan' })
+  }
+  // 物品间:试用期第5天提醒(7天退货窗口)
+  const today = new Date()
+  for (const it of store.items) {
+    if (it.status !== 'trial') continue
+    const days = Math.floor((today - new Date(it.bought_at)) / 864e5)
+    if (days >= 4 && days <= 7) events.push({ day: d0, label: `「${it.name.slice(0, 8)}」退货窗口剩${Math.max(0, 7 - days)}天`, amount: Number(it.price), kind: 'expense' })
   }
   return events
     .map((e) => ({ ...e, delta: (e.day - d0 + 31) % 31 }))
@@ -382,7 +389,8 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
     <!-- 沉淀资产(房车,不计入) -->
     <div v-if="sunk.assets.length" class="card p-4 mb-4 rise" style="--d:9; opacity: .92">
       <button class="w-full flex items-center justify-between" @click="sunkOpen = !sunkOpen">
-        <span class="text-sm font-medium flex items-center gap-1.5" style="color: var(--ink-3)"><Icon name="snow" :size="15" /> 沉淀资产 · 房车(不计入上方)</span>
+        <span class="text-sm font-medium flex items-center gap-1.5" style="color: var(--ink-3)"><Icon name="snow" :size="15" /> 沉淀资产 · 房车物品(不计入上方)</span>
+        <button class="text-xs" style="color: var(--gold)" @click.stop="router.push('/items')">物品间 ›</button>
         <span class="tabular text-sm" style="color: var(--ink-3)">净值约 {{ fmtCNY(sunk.net, true) }} {{ sunkOpen ? '▾' : '▸' }}</span>
       </button>
       <div v-if="sunkOpen" class="mt-3 pt-3 border-t space-y-1.5 text-sm" style="border-color: var(--hairline)">
