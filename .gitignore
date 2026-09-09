@@ -3,3 +3,14 @@ node_modules/
 dist/
 db-snapshots/
 .DS_Store
+
+# Local secrets and private artifacts (does not untrack existing files)
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.log
+health/
+private/
+local-notes/
