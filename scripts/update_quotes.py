@@ -23,25 +23,42 @@ def api(method, path, body=None, prefer=None):
 fx = {r['currency']: float(r['to_cny']) for r in api('GET', '/rest/v1/fx_rates?select=*')}
 HKD = fx.get('HKD', 0.92)
 
-holdings = api('GET', '/rest/v1/holdings?select=*')
-quoted = [h for h in holdings if h['kind'] in ('stock',) and h.get('code')]
-
 def qcode(code):
     return ('hk' + code) if len(code) == 5 else ('sh' + code if code.startswith(('6','9','5')) else 'sz' + code)
 
+def fetch_prices(syms):
+    url = 'https://qt.gtimg.cn/q=' + ','.join(syms)
+    raw = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=20).read().decode('gbk', 'ignore')
+    out = {}
+    for line in raw.split(';'):
+        if '=' not in line: continue
+        key, val = line.split('=', 1)
+        parts = val.strip('"').split('~')
+        if len(parts) > 4:
+            out[key.strip().replace('v_', '')] = float(parts[3])
+    return out
+
+# 卖出复盘:刷新已卖出股票的最新价(原币种),前端算"卖掉比拿着少亏多少"
+sold = api('GET', '/rest/v1/sold_positions?select=*')
+if sold:
+    sp = fetch_prices(sorted({qcode(s['code']) for s in sold}))
+    now = datetime.datetime.utcnow().isoformat()
+    saved_total = 0
+    for s in sold:
+        px = sp.get(qcode(s['code']))
+        if not px or px <= 0: continue
+        api('PATCH', f"/rest/v1/sold_positions?id=eq.{s['id']}", {'cur_price': px, 'price_at': now})
+        rate = HKD if s['currency'] == 'HKD' else 1.0
+        saved_total += (float(s['sell_price']) - px) * float(s['qty']) * rate
+    print(f'卖出复盘:比拿着少亏 {saved_total:+,.0f} 元')
+
+holdings = api('GET', '/rest/v1/holdings?select=*')
+quoted =[h for h in holdings if h['kind'] in ('stock',) and h.get('code')]
+
 codes = {h['code']: qcode(h['code']) for h in quoted}
 if not codes:
-    print('无带代码的持仓,跳过行情抓取'); import sys; sys.exit(0)
-url = 'https://qt.gtimg.cn/q=' + ','.join(codes.values())
-raw = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=20).read().decode('gbk', 'ignore')
-prices = {}
-for line in raw.split(';'):
-    if '=' not in line: continue
-    key, val = line.split('=', 1)
-    parts = val.strip('"').split('~')
-    if len(parts) > 4:
-        sym = key.strip().replace('v_', '')
-        prices[sym] = float(parts[3])
+    print('无带代码的持仓,跳过持仓行情'); sys.exit(0)
+prices = fetch_prices(list(codes.values()))
 
 changed = []
 for h in quoted:

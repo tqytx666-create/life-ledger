@@ -24,9 +24,20 @@ export const store = reactive({
   saveGoals: [],      // 省钱作战目标
   secDaily: null,     // 最近一次证券行情快照
   holdings: [],       // 证券持仓明细
+  soldPositions: [],  // 已卖出股票(卖出复盘)
   advicePrefs: {},    // 被隐藏的建议 key
   items: [],          // 物品间
 })
+
+// 卖出复盘:卖掉比一直拿着少亏(正)/少赚(负)多少,折人民币
+export function soldReview() {
+  const rows = store.soldPositions.map((p) => {
+    const cur = p.cur_price == null ? null : Number(p.cur_price)
+    const diff = cur == null ? 0 : (Number(p.sell_price) - cur) * Number(p.qty) * (store.fx[p.currency] ?? 1)
+    return { ...p, cur, diff }
+  }).sort((a, b) => b.diff - a.diff)
+  return { rows, total: rows.reduce((t, r) => t + r.diff, 0), at: rows.map((r) => r.price_at).filter(Boolean).sort().pop() || null }
+}
 
 export function toCNY(amount, currency) {
   return (Number(amount) || 0) * (store.fx[currency] ?? 1)
@@ -79,7 +90,7 @@ export async function loadAll() {
     const uid = store.session?.user?.id
     const sixMonthsAgo = new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10)
     const txWindow = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10)  // 流水拉13个月,支撑收支图回看
-    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs, items] = await Promise.all([
+    const [accounts, members, batches, bexp, loans, recurring, fx, snaps, tx, savings, saveGoals, secDaily, holdings, advicePrefs, items, soldPositions] = await Promise.all([
       q(supabase.from('accounts').select('*').eq('owner', uid).order('sort').order('created_at'), '账户'),
       q(supabase.from('members').select('*').eq('owner', uid).order('sort').order('created_at'), '成员'),
       q(supabase.from('batches').select('*').eq('owner', uid).order('given_at', { ascending: false }), '批次'),
@@ -95,6 +106,7 @@ export async function loadAll() {
       q(supabase.from('holdings').select('*').eq('owner', uid).order('value', { ascending: false }), '持仓'),
       q(supabase.from('advice_prefs').select('*').eq('owner', uid), '建议偏好'),
       q(supabase.from('items').select('*').eq('owner', uid).order('bought_at', { ascending: false }).limit(500), '物品'),
+      q(supabase.from('sold_positions').select('*').eq('owner', uid).order('sell_date', { ascending: false }), '卖出复盘'),
     ])
     store.accounts = accounts
     store.members = members
@@ -111,6 +123,7 @@ export async function loadAll() {
     store.holdings = holdings
     store.advicePrefs = Object.fromEntries(advicePrefs.map((r) => [r.key, r]))
     store.items = items
+    store.soldPositions = soldPositions
     rebuildCashflow()
     store.ready = true
   } catch (e) {

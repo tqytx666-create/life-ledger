@@ -50,6 +50,7 @@ const stockTotal = computed(() => {
   return t
 })
 const sec = computed(() => store.secDaily)
+const soldRv = computed(() => soldReview())
 const cashAnim = useCountUp(cashWallet)
 const stockAnim = useCountUp(stockTotal)
 
@@ -245,6 +246,15 @@ const kindSign = { income: '+', loan: '-', expense: '-', transfer: '⇄' }
         </div>
       </button>
     </div>
+
+    <!-- 卖出复盘:卖掉比拿着少亏多少 -->
+    <button v-if="soldRv.rows.length" class="card p-3.5 text-left w-full mb-2.5 rise" style="--d:1" @click="router.push('/stocks')">
+      <div class="text-[11px] flex items-center gap-1" style="color: var(--gold)"><Icon name="trend" :size="14" /> 卖掉股票后,比一直拿着 ›</div>
+      <div class="flex items-baseline gap-2 mt-1">
+        <span class="tabular font-bold text-[19px]" :style="soldRv.total >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">{{ soldRv.total >= 0 ? '少亏 ' : '少赚 ' }}{{ fmtCNY(Math.abs(soldRv.total), true) }}</span>
+        <span class="text-[10px]" style="color: var(--ink-3)">{{ soldRv.rows.length }}只 · 每个交易日更新</span>
+      </div>
+    </button>
 
     <!-- 本月四格 -->
     <div class="grid grid-cols-2 gap-2.5 mb-4 rise" style="--d:1">

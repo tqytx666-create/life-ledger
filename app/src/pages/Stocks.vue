@@ -2,7 +2,7 @@
 // 股票详情:每只持仓的现价/成本/盈亏,按账户分组
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { store } from '../lib/store'
+import { store, soldReview } from '../lib/store'
 import Icon from '../components/Icon.vue'
 import { fmtCNY } from '../lib/fmt'
 
@@ -11,6 +11,7 @@ const barsOn = ref(false)
 onMounted(() => setTimeout(() => { barsOn.value = true }, 200))
 
 const sec = computed(() => store.secDaily)
+const soldRv = computed(() => soldReview())
 const accName = (id) => store.accounts.find((a) => a.id === id)?.name || ''
 
 const byAccount = computed(() => {
@@ -55,6 +56,25 @@ const totalPnl = computed(() => {
         <span class="tabular opacity-85">持仓浮动 {{ totalPnl >= 0 ? '+' : '' }}{{ fmtCNY(totalPnl, true) }}</span>
       </div>
       <div v-if="sec" class="text-[11px] opacity-70 mt-1">{{ String(sec.snap_date).slice(5).replace('-', '/') }} 收盘 · 每个交易日16:35自动刷新</div>
+    </div>
+
+    <div v-if="soldRv.rows.length" class="card p-4 mb-4 rise" style="--d:1">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-sm font-medium" style="color: var(--ink-2)">卖出复盘</div>
+        <div class="tabular text-sm font-semibold" :style="soldRv.total >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">
+          {{ soldRv.total >= 0 ? '少亏 ' : '少赚 ' }}{{ fmtCNY(Math.abs(soldRv.total), true) }}</div>
+      </div>
+      <div class="text-[11px] mb-2" style="color: var(--ink-3)">卖出价对比最新价,假如当时没卖、一直拿到现在(不含分红){{ soldRv.at ? ' · ' + String(soldRv.at).slice(5, 10).replace('-', '/') + ' 更新' : '' }}</div>
+      <div v-for="r in soldRv.rows" :key="r.id" class="py-2.5 border-b last:border-0" style="border-color: var(--hairline)">
+        <div class="flex justify-between items-baseline">
+          <span class="text-[15px]">{{ r.name }} <span class="text-[11px]" style="color: var(--ink-3)">{{ r.code }}</span></span>
+          <span class="tabular font-semibold" :style="r.diff >= 0 ? 'color: var(--c-in)' : 'color: var(--c-out)'">{{ r.diff >= 0 ? '少亏 ' : '少赚 ' }}{{ fmtCNY(Math.abs(r.diff), true) }}</span>
+        </div>
+        <div class="text-[12px] mt-0.5 tabular" style="color: var(--ink-3)">
+          {{ Number(r.qty).toLocaleString() }}股 · {{ String(r.sell_date).slice(5).replace('-', '/') }}卖@{{ Number(r.sell_price).toFixed(2) }}{{ r.currency === 'HKD' ? '港元' : '' }}
+          · 现价{{ r.cur == null ? '—' : r.cur.toFixed(2) }}<template v-if="r.price_note && r.price_note.includes('反推')"> · 卖价为反推</template>
+        </div>
+      </div>
     </div>
 
     <div v-for="(g, gi) in byAccount" :key="g.name" class="card p-4 mb-4 rise" :style="`--d:${gi + 1}`">
